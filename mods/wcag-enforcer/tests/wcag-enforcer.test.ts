@@ -78,6 +78,9 @@ type Stub = {
   eslintConfig?: string
   eslint?: string
   axe?: string
+  /** Answers git; absent, the project is not a repository. */
+  git?: (argv: readonly string[]) => string
+  mtime?: () => number
 }
 
 /** Stubs files, processes and display; returns what the mod ran and showed. */
@@ -88,7 +91,12 @@ function stubEngine(on: On, stub: Stub) {
   const find = (path: string) => Object.entries(stub.files ?? {}).find(([end]) => path.endsWith(end))?.[1]
   on('fs.exists', ($, e) => ({ value: find(e.path) !== undefined }))
   on('fs.read', ($, e) => ({ value: find(e.path) ?? '' }))
+  on('fs.stat', ($, e) => ({ value: { kind: 'file' as const, size: 1, mtimeMs: stub.mtime?.() ?? 0, isLink: false, realPath: e.path } }))
   on('process.run', ($, e) => {
+    if (e.argv[0] === 'git') {
+      const stdout = stub.git?.(e.argv)
+      return { value: { exitCode: stdout === undefined ? 128 : 0, stdout: stdout ?? '', stderr: '', isStdoutTruncated: false, isStderrTruncated: false } }
+    }
     runs.push([...e.argv])
     const stdout = e.argv.includes('--print-config')
       ? stub.eslintConfig ?? ESLINT_CONFIG
@@ -196,6 +204,52 @@ test('does nothing when turned off', { options: { enabled: false } }, async ($, 
   const { runs } = stubEngine(on, { files: { 'a.css': '.a { color: #aaa; background: #fff; }' } })
 
   const out = await $.tool.call({ tool: 'Write', file_path: '/work/a.css', content: '' })
+
+  expect(out).toEqual({ result: 'done' })
+  expect(runs).toEqual([])
+})
+
+test('keeps a skipped check in the status line, so it never reads as a pass', async ($, on) => {
+  const { status } = stubEngine(on, {
+    files: { 'A.tsx': 'export const A = 1' },
+    eslintConfig: JSON.stringify({ rules: { semi: [2] } }),
+  })
+
+  await $.tool.call({ tool: 'Write', file_path: '/work/A.tsx', content: '' })
+
+  expect(status.at(-1)).toBe('♿ eslint not running')
+})
+
+test('checks a UI file a shell command names as written', async ($, on) => {
+  stubEngine(on, { files: { 'note.css': '.n { color: #aaa; background: #fff; }' } })
+
+  const out = await $.tool.call({ tool: 'Bash', command: "printf '.n { color: #aaa; background: #fff; }' > note.css" })
+
+  expect(out.context?.[0]).toMatch(/note\.css:1 \[wcag\/contrast-minimum\] text #aaa on #fff/)
+})
+
+test('checks UI files git shows a shell command changed', async ($, on) => {
+  let statusCalls = 0
+  stubEngine(on, {
+    files: { '/repo/src/gen.html': '<html><body><img src="a.png"></body></html>' },
+    axe: '{"violations":[{"rule":"image-alt","help":"Images must have alternative text","line":1,"target":"img"}]}',
+    mtime: () => statusCalls,
+    git: argv => {
+      if (argv[1] === 'rev-parse') return '/repo\n'
+      statusCalls += 1
+      return '?? src/gen.html\0 M README.md\0'
+    },
+  })
+
+  const out = await $.tool.call({ tool: 'Bash', command: 'node scripts/build-pages.js' })
+
+  expect(out.context?.[0]).toContain('- /repo/src/gen.html:1 [axe/image-alt] Images must have alternative text (at img)')
+})
+
+test('leaves a shell command alone when it changes no UI file', async ($, on) => {
+  const { runs } = stubEngine(on, { git: argv => (argv[1] === 'rev-parse' ? '/repo\n' : ' M src/a.ts\0') })
+
+  const out = await $.tool.call({ tool: 'Bash', command: 'npm run build' })
 
   expect(out).toEqual({ result: 'done' })
   expect(runs).toEqual([])

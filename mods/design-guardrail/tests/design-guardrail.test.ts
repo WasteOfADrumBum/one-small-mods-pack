@@ -86,19 +86,36 @@ describe('findViolations', () => {
   })
 })
 
-/** Stubs the project's files and the display calls; `files` maps a path ending to its text. */
-function stubEngine(on: On, files: Record<string, string>) {
+type Extra = {
+  status?: (string | undefined)[]
+  toolCall?: () => { result: string }
+  process?: (argv: readonly string[]) => string
+  mtime?: () => number
+}
+
+/** Stubs the project's files, git, the tool and the display calls; `files` maps a path ending to its text. */
+function stubEngine(on: On, files: Record<string, string>, extra: Extra = {}) {
   const find = (path: string) => Object.entries(files).find(([end]) => path.endsWith(end))?.[1]
   const toasts: string[] = []
   on('fs.exists', ($, e) => ({ value: find(e.path) !== undefined }))
   on('fs.read', ($, e) => ({ value: find(e.path) ?? '' }))
-  on('ui.status', () => ({ value: undefined }))
+  on('fs.stat', () => ({ value: { kind: 'file' as const, size: 10, mtimeMs: extra.mtime?.() ?? 0, isLink: false } }))
+  on('process.run', ($, e) => ({
+    // Outside git unless a test says otherwise
+    value: extra.process === undefined
+      ? { exitCode: 128, stdout: '', stderr: 'not a git repository', isStdoutTruncated: false, isStderrTruncated: false }
+      : { exitCode: 0, stdout: extra.process(e.argv), stderr: '', isStdoutTruncated: false, isStderrTruncated: false },
+  }))
+  on('ui.status', ($, e) => {
+    extra.status?.push(e.text)
+    return { value: undefined }
+  })
   on('ui.log', () => ({ value: undefined }))
   on('ui.toast', ($, e) => {
     toasts.push(e.text)
     return { value: undefined }
   })
-  on('tool.call', () => ({ result: 'written' }))
+  on('tool.call', () => extra.toolCall?.() ?? { result: 'written' })
   return { toasts }
 }
 
@@ -177,6 +194,84 @@ test('does nothing when the project config turns it off', async ($, on) => {
   })
 
   const out = await $.tool.call({ tool: 'Write', file_path: '/work/a.css', content: '.a { color: #fff; }' })
+
+  expect(out).toEqual({ result: 'written' })
+})
+
+describe('what is not a violation', () => {
+  test('borders, zero, media query breakpoints and sizes pass', () => {
+    const css = [
+      '.card { border: 1px solid var(--color-border); border-bottom-width: 2px; outline-offset: 2px; }',
+      '.card { margin: 0px; padding: 0; box-shadow: 0 1px 2px var(--shadow); }',
+      '@media (min-width: 768px) and (max-width: 1024px) { .grid { gap: var(--space-2); } }',
+      '.icon { width: 24px; height: 24px; transform: translateY(-1px); }',
+    ].join('\n')
+    expect(findViolations(css, 'a.css')).toEqual([])
+  })
+
+  test('SVG attributes pass, paint colors included, unless turned off', () => {
+    const svg = '<svg width="24" height="24" viewBox="0 0 24 24"><path fill="#111827" stroke="rgb(0 0 0)" stroke-width="1.5" /><stop stopColor="#fff" /></svg>'
+    expect(findViolations(svg, 'Icon.tsx')).toEqual([])
+    expect(findViolations(svg, 'Icon.tsx', { allowSvgColors: false }).map(v => v.value)).toEqual(['#111827', '#fff', 'rgb(0 0 0)'])
+  })
+
+  test('the allow list lets chosen values through', () => {
+    expect(findViolations('.a { padding: 1px; }', 'a.css', { allow: ['0', '1px'] })).toEqual([])
+    expect(findViolations('.a { padding: 1px; }', 'a.css').map(v => v.value)).toEqual(['1px'])
+  })
+})
+
+test('shows that it is idle in the status line while no tokens file exists', async ($, on) => {
+  const status: (string | undefined)[] = []
+  stubEngine(on, {}, { status })
+
+  await $.tool.call({ tool: 'Write', file_path: '/work/a.css', content: '.a { color: #fff; }' })
+
+  expect(status).toEqual(['🎨 design-guardrail idle: no tokens file at design-tokens.json'])
+})
+
+test('refuses a shell command that writes a UI file', async ($, on) => {
+  stubEngine(on, { 'design-tokens.json': TOKENS_JSON })
+
+  const out = await $.tool.call({ tool: 'Bash', command: "echo '.a { color: #f00 }' > src/a.css" })
+
+  expect(out.deny).toBe(
+    'design-guardrail: this command writes src/a.css from the shell, which skips the design token check. Make the change with the Write or Edit tool instead.',
+  )
+})
+
+test('checks what any other shell command changed, against the last commit', async ($, on) => {
+  const files: Record<string, string> = { 'design-tokens.json': TOKENS_JSON, '/repo/src/b.css': '.b { color: #111111; }' }
+  let statusCalls = 0
+  stubEngine(on, files, {
+    mtime: () => statusCalls,
+    process: argv => {
+      const [, sub] = argv
+      if (sub === 'rev-parse') return '/repo\n'
+      if (sub === 'status') {
+        statusCalls += 1
+        return ' M src/b.css\0'
+      }
+      return sub === 'show' ? '.b { color: #111111; }' : ''
+    },
+    toolCall: () => {
+      files['/repo/src/b.css'] = '.b { color: #111111; padding: 12px; }'
+      return { result: 'ran' }
+    },
+  })
+
+  const out = await $.tool.call({ tool: 'Bash', command: 'node scripts/gen-styles.js' })
+
+  expect(out.result).toBe('ran')
+  expect(out.context?.[0]).toContain('design-guardrail: that command changed /repo/src/b.css, which now hardcodes 1 value')
+  expect(out.context?.[0]).toContain('- line 1: padding `12px` → use `space.3` (`var(--space-3)`).')
+  expect(out.context?.[0]).not.toContain('#111111')
+})
+
+test('lets a shell command through when it can be turned off', { options: {} }, async ($, on) => {
+  stubEngine(on, { 'design-tokens.json': TOKENS_JSON, 'design-guardrail.json': JSON.stringify({ blockBashWrites: false, watchBash: false }) })
+
+  const out = await $.tool.call({ tool: 'Bash', command: "echo x > src/a.css" })
 
   expect(out).toEqual({ result: 'written' })
 })

@@ -42,18 +42,29 @@ export function planScripts(
   return plan
 }
 
-/** The argv that runs a script under the package manager, in CI mode where it matters. */
-export function scriptArgv(manager: PackageManager, script: string): string[] {
+/** The argv that runs a script under the package manager, with extra arguments passed through to it. */
+export function scriptArgv(manager: PackageManager, script: string, extra: readonly string[] = []): string[] {
   switch (manager) {
     case 'yarn':
-      return ['yarn', 'run', script]
     case 'pnpm':
-      return ['pnpm', 'run', script]
     case 'bun':
-      return ['bun', 'run', script]
+      return [manager, 'run', script, ...extra]
     default:
-      return ['npm', 'run', '--silent', script]
+      return ['npm', 'run', '--silent', script, ...(extra.length > 0 ? ['--', ...extra] : [])]
   }
+}
+
+/**
+ * The arguments that scope a check to the files Claude changed: the files
+ * themselves for lint and spell check, `testArgs` then the files for tests
+ * (only when `testArgs` is set, since runners spell it differently), and
+ * none for the type check, which needs the whole project.
+ */
+export function scopeArgs(check: Check, files: readonly string[], testArgs: readonly string[] | undefined): string[] | undefined {
+  if (files.length === 0) return undefined
+  if (check === 'lint' || check === 'spellcheck') return [...files]
+  if (check === 'test' && testArgs !== undefined) return [...testArgs, ...files]
+  return undefined
 }
 
 /** The tail of a script's output: enough to act on, not the whole log. */

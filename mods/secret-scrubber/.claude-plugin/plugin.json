@@ -1,10 +1,17 @@
 {
   "name": "secret-scrubber",
   "version": "0.1.0",
-  "description": "Redacts API keys, tokens, passwords, .env values and private keys from tool output before Claude reads it, and counts the redactions in the status line.",
-  "author": { "name": "Joshua Small" },
+  "description": "Redacts API keys, tokens, passwords, .env values and private keys from tool output, subagent output and @-mentioned files before Claude reads them, and counts the redactions in the status line.",
+  "author": {
+    "name": "Joshua Small"
+  },
   "license": "MIT",
-  "keywords": ["security", "secrets", "redaction", "guardrail"],
+  "keywords": [
+    "security",
+    "secrets",
+    "redaction",
+    "guardrail"
+  ],
   "userConfig": {
     "enabled": {
       "type": "boolean",

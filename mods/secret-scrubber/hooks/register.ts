@@ -78,10 +78,18 @@ function scrubBlock(block: Block, rules: readonly SecretRule[], isEnv: boolean) 
   return { block, count, kinds }
 }
 
+// Secrets redacted this session, shown in the status line.
+let total = 0
+
+function announce($: EngineInterface, settings: Settings, count: number, kinds: Iterable<string>, source: string) {
+  total += count
+  $.ui.status(`🔒 ${total} secret${total === 1 ? '' : 's'} redacted`)
+  if (settings.showToast) $.ui.toast(`secret-scrubber: redacted ${count} from ${source} (${[...kinds].join(', ')})`)
+}
+
 export const register: Register = (on, options) => {
   // Tool calls whose output is the text of a .env file, by tool_use_id
   const envCalls = new Set<string>()
-  let total = 0
 
   on('tool.call', ($, e, next) => {
     const isEnv =
@@ -108,12 +116,8 @@ export const register: Register = (on, options) => {
     })
     if (count === 0) return next(e)
 
-    total += count
-    $.ui.status(`🔒 ${total} secret${total === 1 ? '' : 's'} redacted`)
-    if (settings.showToast) {
-      const tool = e.origin.kind === 'tool' ? e.origin.tool : 'tool'
-      $.ui.toast(`secret-scrubber: redacted ${count} from ${tool} output (${[...kinds].join(', ')})`)
-    }
+    const tool = e.origin.kind === 'tool' ? e.origin.tool : 'tool'
+    announce($, settings, count, kinds, `${tool} output${e.agentId === undefined ? '' : ' in a subagent'}`)
     return next({ ...e, message: { ...e.message, content } })
   }).catch(($, e, next) => {
     // Fail closed: if the scan itself failed, Claude reads no output at all.
@@ -126,4 +130,31 @@ export const register: Register = (on, options) => {
     })
     return next({ ...e, message: { ...e.message, content } })
   })
+
+  // Files the person @-mentions reach Claude as attachments, not tool
+  // results, and are rendered again for each request: scrub them there.
+  const mentionedEnv = new Set<string>()
+  const counted = new Set<string>()
+
+  on('prompt.mention', ($, e, next) => {
+    if (ENV_FILE.test(e.path)) mentionedEnv.add(e.path)
+    return next(e)
+  })
+
+  on('prompt.attachment', async ($, e, next) => {
+    const settings = await load($, options)
+    if (!settings.enabled) return next(e)
+    const isEnv = [...mentionedEnv].some(path => e.text.includes(path))
+    const done = scrub(e.text, settings.rules, isEnv)
+    if (done.count === 0) return next(e)
+    // Count each attachment once, however many requests carry it.
+    if (!counted.has(e.text)) {
+      counted.add(e.text)
+      announce($, settings, done.count, done.kinds, e.type === 'file' ? 'a mentioned file' : `the ${e.type} attachment`)
+    }
+    return next({ ...e, text: done.text })
+  }).catch(($, e, next) =>
+    // Fail closed, as for tool output.
+    next.called ? next(e) : next({ ...e, text: '[secret-scrubber could not scan this attachment, so it was withheld]' }),
+  )
 }

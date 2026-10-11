@@ -2,9 +2,18 @@
   "name": "qa-gate",
   "version": "0.1.0",
   "description": "When Claude tries to finish a turn after editing code, runs the project's lint, type check, spell check and test scripts from package.json, and keeps Claude working until they pass. Scripts that don't exist are skipped.",
-  "author": { "name": "Joshua Small" },
+  "author": {
+    "name": "Joshua Small"
+  },
   "license": "MIT",
-  "keywords": ["quality", "lint", "typecheck", "tests", "ci", "guardrail"],
+  "keywords": [
+    "quality",
+    "lint",
+    "typecheck",
+    "tests",
+    "ci",
+    "guardrail"
+  ],
   "userConfig": {
     "enabled": {
       "type": "boolean",
@@ -15,7 +24,7 @@
     "configFile": {
       "type": "string",
       "title": "Project config file",
-      "description": "JSON file, relative to the project, whose keys override these options (enabled, packageJson, packageManager, checks, scripts, codeExtensions, maxAttempts, timeoutMs).",
+      "description": "JSON file, relative to the project, whose keys override these options (enabled, packageJson, packageManager, checks, scripts, codeExtensions, maxAttempts, timeoutSeconds or timeoutMs, scope, testArgs, watchBash).",
       "default": ".claude/guardrail-mods/qa-gate.json"
     },
     "packageJson": {
@@ -28,7 +37,13 @@
       "type": "string",
       "title": "Package manager",
       "description": "How to run the scripts; auto picks from the lockfile.",
-      "options": ["auto", "npm", "pnpm", "yarn", "bun"],
+      "options": [
+        "auto",
+        "npm",
+        "pnpm",
+        "yarn",
+        "bun"
+      ],
       "default": "auto"
     },
     "maxAttempts": {
@@ -38,6 +53,24 @@
       "default": 3,
       "min": 1,
       "max": 20
+    },
+    "scope": {
+      "type": "string",
+      "title": "Scope",
+      "description": "all runs every script on the whole project; changed passes only the files Claude changed to the lint and spell check scripts (and to tests when testArgs is set in the project file). The type check always runs on the whole project.",
+      "options": [
+        "all",
+        "changed"
+      ],
+      "default": "all"
+    },
+    "timeoutSeconds": {
+      "type": "number",
+      "title": "Timeout per script (seconds)",
+      "description": "A script still running after this long is stopped and reported as timed out.",
+      "default": 300,
+      "min": 10,
+      "max": 600
     }
   }
 }

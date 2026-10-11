@@ -24,6 +24,9 @@ const COLOR_FN = /\b(?:rgba?|hsla?)\([^()]*\)/g
 // An anchor, an id or a link, not a color: href="#fade", to="#add"
 const NOT_A_COLOR_BEFORE = /(?:href|to|id|for|xlink:href|url)\s*[=(]\s*["'`{]?\s*$/
 
+// An SVG paint attribute: fill="#000", stroke='rgb(0 0 0)', stopColor="#fff"
+const SVG_PAINT_BEFORE = /(?:fill|stroke|stop-color|stopColor|flood-color|floodColor|lighting-color|lightingColor)\s*=\s*\{?\s*["'`]\s*$/
+
 const FONT_PROPS = /^(font|font-size|line-height|letter-spacing|fontSize|lineHeight|letterSpacing|text|leading|tracking)$/
 const CSS_LENGTH_DECL =
   /(?<![\w-])(margin(?:-[a-z-]+)?|padding(?:-[a-z-]+)?|gap|row-gap|column-gap|inset(?:-[a-z-]+)?|top|right|bottom|left|font|font-size|line-height|letter-spacing)\s*:\s*([^;{}]+)/g
@@ -38,7 +41,15 @@ const groupOfProperty = (property: string): Token['group'] => (FONT_PROPS.test(p
 /** Blanks `var(...)` (fallbacks included) so a token reference is never flagged. */
 const maskTokenRefs = (line: string) => line.replace(/var\([^()]*(?:\([^()]*\)[^()]*)*\)/g, m => ' '.repeat(m.length))
 
-export function findViolations(text: string, path: string, allow: readonly string[] = ['0', '0px']): Violation[] {
+export type ScanOptions = {
+  /** Values never flagged, compared as written (`0`, `1px`, `#fff`). */
+  allow?: readonly string[]
+  /** Leaves colors on SVG paint attributes (`fill="#000"`, `stroke`, `stop-color`) alone. */
+  allowSvgColors?: boolean
+}
+
+export function findViolations(text: string, path: string, options: ScanOptions = {}): Violation[] {
+  const { allow = ['0', '0px'], allowSvgColors = true } = options
   const allowed = new Set(allow.map(a => a.trim().toLowerCase()))
   const sheet = isStylesheet(path)
   const found: Violation[] = []
@@ -55,9 +66,11 @@ export function findViolations(text: string, path: string, allow: readonly strin
 
     for (const match of line.matchAll(HEX)) {
       if (NOT_A_COLOR_BEFORE.test(line.slice(0, match.index))) continue
+      if (allowSvgColors && SVG_PAINT_BEFORE.test(line.slice(0, match.index))) continue
       add({ line: lineNo, value: match[0], kind: 'color', group: 'other' })
     }
     for (const match of line.matchAll(COLOR_FN)) {
+      if (allowSvgColors && SVG_PAINT_BEFORE.test(line.slice(0, match.index))) continue
       add({ line: lineNo, value: match[0], kind: 'color', group: 'other' })
     }
 

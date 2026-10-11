@@ -4,12 +4,14 @@ Four [Claude Code mods](https://code.claude.com/docs/en/plugins/mods) that hold 
 
 | Mod | What it does | Event it hooks |
 | :-- | :-- | :-- |
-| [`wcag-enforcer`](mods/wcag-enforcer) | After a Write or Edit to `.tsx`, `.jsx`, `.html`, `.vue` or `.css`, runs eslint-plugin-jsx-a11y, axe-core and a WCAG 2.2 AA contrast check, and hands Claude each failure with file, line and rule | `tool.call` (after the tool runs), `classic.Stop` |
-| [`design-guardrail`](mods/design-guardrail) | Before a Write or Edit to a UI file, blocks hardcoded hex/rgb/hsl colors and px spacing and font values, naming the design token to use | `tool.call` (before the tool runs) |
-| [`qa-gate`](mods/qa-gate) | When Claude tries to finish a turn after editing code, runs the `lint`, type check, spell check and `test` scripts in `package.json` and keeps Claude working until they pass | `tool.call`, `classic.Stop` |
-| [`secret-scrubber`](mods/secret-scrubber) | Redacts API keys, tokens, passwords, `.env` values and private keys from tool output before Claude reads it, with a running count in the status line | `session.append` (tool results), `tool.call` |
+| [`wcag-enforcer`](mods/wcag-enforcer) | After a Write, Edit or shell command changes a `.tsx`, `.jsx`, `.html`, `.vue` or `.css` file, runs automated WCAG checks (eslint-plugin-jsx-a11y, axe-core, and a WCAG 2.2 AA text contrast check) and hands Claude each failure with file, line and rule | `tool.call` (after Write, Edit and Bash run), `classic.Stop` |
+| [`design-guardrail`](mods/design-guardrail) | Before a Write or Edit to a UI file, blocks hardcoded hex/rgb/hsl colors and px spacing and font values, naming the design token to use; refuses shell commands that write UI files and checks what other commands changed | `tool.call` (before Write and Edit, around Bash) |
+| [`qa-gate`](mods/qa-gate) | When Claude tries to finish a turn after changing code (by any tool, the shell included), runs the `lint`, type check, spell check and `test` scripts in `package.json` and keeps Claude working until they pass | `tool.call`, `classic.Stop` |
+| [`secret-scrubber`](mods/secret-scrubber) | Redacts API keys, tokens, passwords, `.env` values and private keys from tool output, subagent output and @-mentioned files before Claude reads them, with a running count in the status line | `session.append` (tool results), `prompt.attachment`, `prompt.mention`, `tool.call` |
 
-Built and type-checked against the declarations of **Claude Code 2.1.296** (vendored in [`types/claude-code.d.ts`](types/claude-code.d.ts)), using only events and APIs that build declares. Mods need Claude Code 2.1.287 or later; `qa-gate`'s package manager picker needs 2.1.271 or later.
+Built and type-checked against the declarations of **Claude Code 2.1.296**, using only events and APIs that build declares. Mods need Claude Code 2.1.287 or later; `qa-gate`'s package manager and scope pickers need 2.1.271 or later.
+
+> **What wcag-enforcer is, and isn't.** It runs automated WCAG checks on the code Claude writes. That is not a WCAG compliance audit: static checks like these catch only part of WCAG (often put at around a third of issues), and nothing here tests keyboard operation, focus order, screen reader output or how content reads in context. Keep testing those by hand and with assistive technology.
 
 ## Install
 
@@ -39,9 +41,9 @@ To try a mod from a clone without installing it, start Claude Code with `claude 
 
 | Mod | Needs |
 | :-- | :-- |
-| `wcag-enforcer` | For components: ESLint with `eslint-plugin-jsx-a11y` (or `eslint-plugin-vuejs-accessibility` for `.vue`) turned on in your ESLint config. For HTML: `npm i -D axe-core jsdom`. The contrast check needs nothing. A missing tool is skipped with one toast. |
-| `design-guardrail` | A tokens file, `design-tokens.json` by default. Without one it steps aside with one toast. |
-| `qa-gate` | A `package.json` with any of the scripts it looks for. |
+| `wcag-enforcer` | For components: ESLint with `eslint-plugin-jsx-a11y` (or `eslint-plugin-vuejs-accessibility` for `.vue`) turned on in your ESLint config. For HTML: `npm i -D axe-core jsdom`. The contrast check needs nothing. A check whose tool is missing is skipped, and the status line keeps saying so (`♿ eslint not running`) for as long as it is, so it never reads as a pass. |
+| `design-guardrail` | A tokens file, `design-tokens.json` by default. Without one it stands aside, and the status line says so (`🎨 design-guardrail idle: no tokens file at design-tokens.json`). |
+| `qa-gate` | A `package.json` with any of the scripts it looks for. The status line names the checks that have no script (`✅ qa-gate: 2/2 passed · no spellcheck, test script`). |
 | `secret-scrubber` | Nothing. |
 
 ## Configure
@@ -58,9 +60,9 @@ Every mod has two layers of settings, and the second wins:
 
 | Mod | Options (`/config`) | Extra keys in the project file |
 | :-- | :-- | :-- |
-| `wcag-enforcer` | `enabled`, `configFile`, `extensions`, `eslintCommand`, `blockStopUntilFixed` | `eslint`, `eslintRulePrefixes`, `axe`, `nodeCommand`, `contrast`, `timeoutMs` |
-| `design-guardrail` | `enabled`, `configFile`, `tokensFile`, `extensions`, `ignore` | `allow`, `maxReported` |
-| `qa-gate` | `enabled`, `configFile`, `packageJson`, `packageManager`, `maxAttempts` | `checks`, `scripts`, `codeExtensions`, `timeoutMs` |
+| `wcag-enforcer` | `enabled`, `configFile`, `extensions`, `eslintCommand`, `blockStopUntilFixed` | `eslint`, `eslintRulePrefixes`, `axe`, `nodeCommand`, `contrast`, `watchBash`, `timeoutMs` |
+| `design-guardrail` | `enabled`, `configFile`, `tokensFile`, `extensions`, `ignore`, `allow` | `allowSvgColors`, `blockBashWrites`, `watchBash`, `maxReported` |
+| `qa-gate` | `enabled`, `configFile`, `packageJson`, `packageManager`, `maxAttempts`, `scope`, `timeoutSeconds` | `checks`, `scripts`, `codeExtensions`, `testArgs`, `watchBash` |
 | `secret-scrubber` | `enabled`, `configFile`, `patternsFile`, `showToast` | `disabledRules`, `patterns` |
 
 ## Demos
@@ -78,6 +80,8 @@ wcag-enforcer: 1 accessibility failure (WCAG 2.2 AA) in note.css. Fix every one 
 ```
 
 The status line shows `♿ 2 WCAG failures in 2 files` until they're fixed. If Claude tries to finish with failures still open, the mod sends it back with the list (twice at most, then it lets the turn end with a toast). In a test run, Claude changed the color to `#767676` (4.54:1) on its own.
+
+Files changed through the shell are checked too: the ones a command names as written (redirects, `tee`, `sed -i`, `cp`/`mv` targets, `curl -o`) and, in a git repository, any UI file whose change time moved while the command ran, so a code generator's output is covered. Set `watchBash` to `false` to skip that.
 
 HTML files go through axe-core in jsdom (`mods/wcag-enforcer/scripts/axe-check.mjs`), reported as `[axe/image-alt]`, `[axe/html-has-lang]` and so on, with line numbers. jsdom does no layout, so axe's own contrast rule is off and the mod's contrast check covers it: literal color pairs in CSS rules, `style=""` attributes and JSX style objects, with `var(--x)` resolved when the file defines `--x`, and 3:1 for large text.
 
@@ -100,6 +104,10 @@ Replace each with the token named and retry. A value that truly must stay can be
 
 It retries with `.card { color: var(--color-brand); padding: var(--space-3); }`. The tokens file can be JSON (nested, W3C `$value` or Style Dictionary `value` leaves) or a CSS, SCSS or Less file of variables. It catches hex, `rgb()`, `hsl()`, px in spacing and font properties, React style numbers (`marginTop: 12`) and Tailwind arbitrary values (`p-[10px]`, `text-[#f00]`). An Edit is judged only on the values it adds, so legacy values already in a file don't block unrelated edits.
 
+What it leaves alone, each covered by a test: borders and other properties outside spacing and type (`border: 1px solid ...`, `box-shadow`, `width: 24px`), `0` and `0px`, media query breakpoints (`@media (min-width: 768px)`), SVG attributes (`width="24"`, `stroke-width`, and paint colors like `fill="#111827"` unless `allowSvgColors` is `false`), `var()` references and their fallbacks, token definitions themselves, and any line marked `guardrail-ignore`. Add values to `allow` (such as `1px`) to let them through everywhere.
+
+The shell can't sidestep it. A command that writes a UI file directly (`echo ... > a.css`, `tee`, `sed -i`, `perl -pi`, `curl -o`) is refused with a note to use Write or Edit. Any other command that changes a UI file (a generator script, say) runs, and in a git repository the values it added since the last commit come back to Claude as a note to fix with Edit. `blockBashWrites` and `watchBash` turn those off.
+
 ### qa-gate
 
 Claude edits `src/a.ts` and tries to finish. The gate runs `npm run --silent lint`, `typecheck`, `spellcheck` and `test` (whichever exist; npm's placeholder `test` is skipped) with `CI=true`, and when one fails Claude reads:
@@ -113,11 +121,16 @@ src/a.ts(3,14): error TS2322: Type 'string' is not assignable to type 'number'.
 ```
 ````
 
-The status line tracks it: `🧪 qa-gate: running typecheck…`, then `❌ qa-gate: typecheck failed` or `✅ qa-gate: 3/3 passed`. A turn that changed no code is never held. After `maxAttempts` holds in a row (3 by default) it lets the turn end with a toast. pnpm, yarn and bun are picked from the lockfile.
+The status line tracks it: `🧪 qa-gate: running typecheck…`, then `❌ qa-gate: typecheck failed` or `✅ qa-gate: 3/3 passed`. A turn that changed no code is never held, and code changed through the shell counts (what a command names as written, and in a git repository what changed while it ran). After `maxAttempts` holds in a row (3 by default) it lets the turn end with a toast. pnpm, yarn and bun are picked from the lockfile.
+
+For bigger repositories:
+
+- **`timeoutSeconds`** (300 by default) stops a script that runs too long and tells Claude it timed out.
+- **`scope: "changed"`** passes only the files Claude changed to the lint and spell check scripts (`npm run --silent lint -- src/a.ts`). Tests get them too once you set `testArgs` to your runner's flag, such as `["--findRelatedTests"]` for Jest; otherwise the full suite runs. The type check always runs on the whole project, since it can't be judged file by file.
 
 ### secret-scrubber
 
-Claude reads `.env.local`, then runs a script that prints a token. What Claude reads is:
+Claude reads `.env.local` (with Read, `cat`, or an `@.env.local` mention in your prompt), then runs a script that prints a token. What Claude reads is:
 
 ```text
 PORT=[REDACTED:env-value]
@@ -128,7 +141,9 @@ DATABASE_URL=[REDACTED:env-value]
 Using token [REDACTED:github-token] for api.github.com
 ```
 
-The status line keeps a running count (`🔒 3 secrets redacted`) and a toast says what was caught. It covers private key blocks, JWTs, GitHub, Google (API keys, OAuth tokens, client secrets), AWS (key IDs and secret keys), Vercel, Todoist, Slack, Stripe, Anthropic and OpenAI keys, Bearer tokens, credentials in URLs, every value of a `.env` file Claude reads, and generic `password=`, `api_key:`, `"secret": "..."` pairs whose value looks like a secret (code like `token = getToken()` is left alone). Add your own with `patterns`. Your terminal still shows the real output; only what Claude reads is scrubbed. If the scan itself fails, the output is withheld from Claude rather than passed through.
+The status line keeps a running count (`🔒 3 secrets redacted`) and a toast says what was caught. It covers private key blocks, JWTs, GitHub, Google (API keys, OAuth tokens, client secrets), AWS (key IDs and secret keys), Vercel, Todoist, Slack, Stripe, Anthropic and OpenAI keys, Bearer tokens, credentials in URLs, every value of a `.env` file Claude reads, and generic `password=`, `api_key:`, `"secret": "..."` pairs whose value looks like a secret (code like `token = getToken()` is left alone). Add your own with `patterns`.
+
+Where it scrubs: every tool result before it's stored (in the main conversation and in every subagent's, so a subagent never reads the secret and its report back to Claude is scrubbed too), and every attachment as a request carries it, which covers files you @-mention, files changed outside Claude that it's shown, and settings hook output. Your terminal still shows the real output; only what Claude reads is scrubbed. If the scan itself fails, the output is withheld from Claude rather than passed through.
 
 ## How they fail
 
@@ -139,12 +154,15 @@ The status line keeps a running count (`🔒 3 secrets redacted`) and a toast sa
 ## Develop
 
 ```bash
-npm run typecheck   # tsc against types/claude-code.d.ts (Claude Code 2.1.296)
+npm run types       # copy your Claude Code build's type declarations into types/ (see below)
+npm run typecheck   # tsc against them
 npm run validate    # claude plugin validate on the marketplace and each mod
 npm test            # claude plugin test in each mod
 ```
 
-Each mod's tests live in `mods/<mod>/tests/` and use `claude-code/testing`: they raise the events the mod hooks and stub every file, process and display call beneath it, covering pass and fail cases. To type-check against a different Claude Code build, replace `types/claude-code.d.ts` with the one that build writes beside a mod it loads (`.claude-plugin/types/claude-code/index.d.ts`).
+The type declarations (`claude-code.d.ts`) are Anthropic's and are not redistributed here (Claude Code's license reserves all rights), so `types/` is git-ignored. Claude Code writes them for your build beside a mod it loads from a folder it watches: start `claude --plugin-dir mods/qa-gate` once, then run `npm run types`, which copies them from `mods/*/.claude-plugin/types/` into `types/claude-code.d.ts`. You can also pass a path: `node scripts/link-types.mjs /path/to/claude-code.d.ts`.
+
+Each mod's tests live in `mods/<mod>/tests/` and use `claude-code/testing`: they raise the events the mod hooks and stub every file, process and display call beneath it, covering pass and fail cases. `claude plugin validate` and `claude plugin test` need no types.
 
 ## License
 
