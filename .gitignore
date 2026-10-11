@@ -1,4 +1,6 @@
 node_modules/
+# Claude Code type declarations for your build (npm run types); not redistributed
+types/
 # Laid by Claude Code beside a mod it loads from a folder it watches
 mods/*/.claude-plugin/types/
 mods/*/tsconfig.json

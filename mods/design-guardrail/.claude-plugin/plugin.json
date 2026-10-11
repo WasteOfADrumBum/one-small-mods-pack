@@ -2,9 +2,16 @@
   "name": "design-guardrail",
   "version": "0.1.0",
   "description": "Blocks Write and Edit on UI files that hardcode hex/rgb/hsl colors or px spacing and font values, and names the design token to use instead.",
-  "author": { "name": "Joshua Small" },
+  "author": {
+    "name": "Joshua Small"
+  },
   "license": "MIT",
-  "keywords": ["design-system", "design-tokens", "css", "guardrail"],
+  "keywords": [
+    "design-system",
+    "design-tokens",
+    "css",
+    "guardrail"
+  ],
   "userConfig": {
     "enabled": {
       "type": "boolean",
@@ -15,7 +22,7 @@
     "configFile": {
       "type": "string",
       "title": "Project config file",
-      "description": "JSON file, relative to the project, whose keys override these options (enabled, tokensFile, extensions, ignore, allow, maxReported).",
+      "description": "JSON file, relative to the project, whose keys override these options (enabled, tokensFile, extensions, ignore, allow, allowSvgColors, blockBashWrites, watchBash, maxReported).",
       "default": ".claude/guardrail-mods/design-guardrail.json"
     },
     "tokensFile": {
@@ -35,6 +42,12 @@
       "title": "Ignored paths",
       "description": "Comma-separated globs the guard skips, such as **/*.stories.tsx,legacy/**.",
       "default": ""
+    },
+    "allow": {
+      "type": "string",
+      "title": "Allowed values",
+      "description": "Comma-separated values never flagged, such as 0,1px.",
+      "default": "0,0px"
     }
   }
 }

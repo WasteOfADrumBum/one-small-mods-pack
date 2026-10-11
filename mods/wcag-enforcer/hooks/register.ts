@@ -1,5 +1,6 @@
 import type { EngineInterface, PluginOptions, Register } from 'claude-code'
 
+import { bashWrites, changedFiles, porcelainPaths } from './bash-writes'
 import { asBool, asList, asNumber, asString, parseConfigText, pick } from './config'
 import type { RawConfig } from './config'
 import { checkContrast } from './contrast'
@@ -16,6 +17,7 @@ type Settings = {
   nodeCommand: string
   contrast: boolean
   blockStop: boolean
+  watchBash: boolean
   timeoutMs: number
 }
 
@@ -46,6 +48,7 @@ async function load($: EngineInterface, options: PluginOptions): Promise<Setting
     nodeCommand: pick(file, options, 'nodeCommand', 'node', asString),
     contrast: pick(file, options, 'contrast', true, asBool),
     blockStop: pick(file, options, 'blockStopUntilFixed', true, asBool),
+    watchBash: pick(file, options, 'watchBash', true, asBool),
     timeoutMs: pick(file, options, 'timeoutMs', 60_000, asNumber),
   }
 }
@@ -55,7 +58,12 @@ const warned = new Set<string>()
 // Whether the project's ESLint config turns on accessibility rules, by command.
 const eslintReady = new Map<string, boolean>()
 
+// The checks that could not run, by tool, with why: shown in the status
+// line for as long as it holds, so a skipped check never reads as a pass.
+const skipped = new Map<ToolFailure['tool'], string>()
+
 function warnOnce($: EngineInterface, failure: ToolFailure) {
+  skipped.set(failure.tool, failure.reason)
   if (warned.has(failure.tool)) return
   warned.add(failure.tool)
   $.ui.toast(`wcag-enforcer: skipping ${failure.tool} checks: ${failure.reason}`)
@@ -86,6 +94,7 @@ async function runEslint($: EngineInterface, settings: Settings, file: string): 
     warnOnce($, parsed)
     return []
   }
+  skipped.delete('eslint')
   return parsed
 }
 
@@ -98,6 +107,7 @@ async function runAxe($: EngineInterface, settings: Settings, file: string): Pro
     warnOnce($, parsed)
     return []
   }
+  skipped.delete('axe')
   return parsed
 }
 
@@ -131,7 +141,45 @@ let stopBlocks = 0
 function showStatus($: EngineInterface) {
   const count = [...outstanding.values()].reduce((sum, list) => sum + list.length, 0)
   const files = outstanding.size
-  $.ui.status(count === 0 ? undefined : `♿ ${count} WCAG failure${count === 1 ? '' : 's'} in ${files} file${files === 1 ? '' : 's'}`)
+  const parts: string[] = []
+  if (count > 0) parts.push(`${count} WCAG failure${count === 1 ? '' : 's'} in ${files} file${files === 1 ? '' : 's'}`)
+  if (skipped.size > 0) parts.push(`${[...skipped.keys()].join(' and ')} not running`)
+  $.ui.status(parts.length === 0 ? undefined : `♿ ${parts.join(' · ')}`)
+}
+
+/** Checks a file, records what it found, and returns the note for Claude when something failed. */
+async function checkFile($: EngineInterface, settings: Settings, file: string): Promise<string | undefined> {
+  const findings = await check($, settings, file)
+  if (findings.length === 0) outstanding.delete(file)
+  else {
+    outstanding.set(file, findings)
+    stopBlocks = 0
+  }
+  showStatus($)
+  if (findings.length === 0) return undefined
+  const notRun = [...skipped].map(([tool, reason]) => `(${tool} did not run: ${reason}.)`)
+  return [report(file, findings), ...notRun].join('\n')
+}
+
+// The repository root, once found; null outside a git repository.
+let gitRoot: string | null | undefined
+
+/** Files with uncommitted changes that pass `keep`, by absolute path, stamped with mtime and size; undefined outside git. */
+async function dirtyFiles($: EngineInterface, keep: (path: string) => boolean): Promise<Map<string, string> | undefined> {
+  if (gitRoot === undefined) {
+    const top = await $.process.run(['git', 'rev-parse', '--show-toplevel'], { timeoutMs: 10_000 }).catch(() => undefined)
+    gitRoot = top !== undefined && top.exitCode === 0 ? top.stdout.trim() : null
+  }
+  if (gitRoot === null) return undefined
+  const status = await $.process.run(['git', 'status', '--porcelain', '-z', '--untracked-files=all'], { timeoutMs: 10_000 }).catch(() => undefined)
+  if (status === undefined || status.exitCode !== 0) return undefined
+  const files = new Map<string, string>()
+  for (const rel of porcelainPaths(status.stdout).filter(keep).slice(0, 500)) {
+    const path = `${gitRoot}/${rel}`
+    const stat = await $.fs.stat(path).catch(() => undefined)
+    if (stat !== undefined && stat.kind === 'file') files.set(path, `${stat.mtimeMs}:${stat.size}`)
+  }
+  return files
 }
 
 export const register: Register = (on, options) => {
@@ -144,16 +192,35 @@ export const register: Register = (on, options) => {
     const lower = e.file_path.toLowerCase()
     if (!settings.enabled || !settings.extensions.some(ext => lower.endsWith(ext))) return ran
 
-    const findings = await check($, settings, e.file_path)
-    if (findings.length === 0) {
-      outstanding.delete(e.file_path)
-      showStatus($)
-      return ran
+    const note = await checkFile($, settings, e.file_path)
+    return note === undefined ? ran : { ...ran, context: [...(ran.context ?? []), note] }
+  })
+
+  // A UI file written through the shell skips the Write/Edit hook above:
+  // check what the command names as written, and what git shows it changed.
+  on('tool.call', { tool: 'Bash' }, async ($, e, next) => {
+    const settings = await load($, options)
+    if (!settings.enabled || !settings.watchBash) return next(e)
+    const checked = (path: string) => settings.extensions.some(ext => path.toLowerCase().endsWith(ext))
+
+    const before = await dirtyFiles($, checked)
+    const ran = await next(e)
+    if (ran.deny !== undefined) return ran
+    const after = before === undefined ? undefined : await dirtyFiles($, checked)
+
+    const files = new Set(before !== undefined && after !== undefined ? changedFiles(before, after) : [])
+    for (const write of bashWrites(e.command)) {
+      if (!checked(write.path) || !(await $.fs.exists(write.path))) continue
+      const stat = await $.fs.stat(write.path, { resolve: true }).catch(() => undefined)
+      files.add(stat?.realPath ?? write.path)
     }
-    outstanding.set(e.file_path, findings)
-    stopBlocks = 0
-    showStatus($)
-    return { ...ran, context: [...(ran.context ?? []), report(e.file_path, findings)] }
+
+    const notes: string[] = []
+    for (const file of files) {
+      const note = await checkFile($, settings, file)
+      if (note !== undefined) notes.push(note)
+    }
+    return notes.length === 0 ? ran : { ...ran, context: [...(ran.context ?? []), ...notes] }
   })
 
   on('classic.Stop', async ($, e, next) => {

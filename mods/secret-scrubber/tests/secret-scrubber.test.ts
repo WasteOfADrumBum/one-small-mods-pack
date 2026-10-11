@@ -156,3 +156,55 @@ test('is off when the enabled option is false', { options: { enabled: false } },
 
   expect(firstResult(session.appended())).toBe(`token ${GITHUB}`)
 })
+
+test('scrubs a subagent tool result and says where it came from', async ($, on) => {
+  const { toasts } = stubEngine(on)
+  const session = mock.session(on)
+
+  await $.session.append({ ...toolResult('s1', `key ${GOOGLE}`), agentId: 'agent-1' })
+
+  expect(firstResult(session.appended())).toBe('key [REDACTED:google-api-key]')
+  expect(toasts[0]).toBe('secret-scrubber: redacted 1 from Bash output in a subagent (google-api-key)')
+})
+
+test('scrubs a subagent report on its way back to the main conversation', async ($, on) => {
+  stubEngine(on)
+  const session = mock.session(on)
+
+  await $.session.append({ ...toolResult('a1', [{ type: 'text', text: `Found the deploy key: ${GITHUB}` }]), origin: { kind: 'tool', tool: 'Agent' } })
+
+  expect(session.appended().at(-1)?.message.content[0]?.content).toEqual([{ type: 'text', text: 'Found the deploy key: [REDACTED:github-token]' }])
+})
+
+test('scrubs an @-mentioned file, counting it once however many requests carry it', async ($, on) => {
+  const { status } = stubEngine(on)
+  on('prompt.attachment', ($, e) => ({ text: e.text }))
+
+  const attachment = { type: 'file', text: `config.ts:\nconst key = "${GOOGLE}"`, origin: { kind: 'engine' as const } }
+  const first = await $.prompt.attachment(attachment)
+  const second = await $.prompt.attachment(attachment)
+
+  expect(first.text).toBe('config.ts:\nconst key = "[REDACTED:google-api-key]"')
+  expect(second.text).toBe(first.text)
+  expect(status).toEqual(['🔒 1 secret redacted'])
+})
+
+test('blanks every value of an @-mentioned .env file', async ($, on) => {
+  stubEngine(on)
+  on('prompt.mention', () => ({ type: null }))
+  on('prompt.attachment', ($, e) => ({ text: e.text }))
+
+  await $.prompt.mention({ mention: '.env', path: '/work/.env' })
+  const out = await $.prompt.attachment({ type: 'file', text: 'Contents of /work/.env:\nPORT=3000\nNAME=demo', origin: { kind: 'engine' } })
+
+  expect(out.text).toBe('Contents of /work/.env:\nPORT=[REDACTED:env-value]\nNAME=[REDACTED:env-value]')
+})
+
+test('leaves a clean attachment as it was', async ($, on) => {
+  stubEngine(on)
+  on('prompt.attachment', ($, e) => ({ text: e.text }))
+
+  const out = await $.prompt.attachment({ type: 'todo_reminder', text: 'Remember the todo list.', origin: { kind: 'engine' } })
+
+  expect(out.text).toBe('Remember the todo list.')
+})

@@ -5,9 +5,10 @@
   "description": "Claude Code mods that hold Claude to accessibility, design-token, quality and secret-handling rules.",
   "license": "MIT",
   "scripts": {
+    "types": "node scripts/link-types.mjs",
+    "typecheck": "tsc -p .",
     "validate": "claude plugin validate . && for mod in mods/*/; do claude plugin validate \"$mod\" || exit 1; done",
     "test": "for mod in mods/*/; do claude plugin test \"$mod\" || exit 1; done",
-    "typecheck": "tsc -p .",
     "check": "npm run typecheck && npm run validate && npm test"
   },
   "devDependencies": {
