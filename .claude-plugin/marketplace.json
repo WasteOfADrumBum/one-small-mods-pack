@@ -1,0 +1,29 @@
+{
+  "name": "guardrail-mods",
+  "owner": { "name": "Joshua Small" },
+  "metadata": {
+    "description": "Claude Code mods that hold Claude to accessibility, design-token, quality and secret-handling rules."
+  },
+  "plugins": [
+    {
+      "name": "wcag-enforcer",
+      "source": "./mods/wcag-enforcer",
+      "description": "Runs jsx-a11y, axe-core and a WCAG 2.2 AA contrast check after each UI edit and feeds failures back to Claude."
+    },
+    {
+      "name": "design-guardrail",
+      "source": "./mods/design-guardrail",
+      "description": "Blocks hardcoded colors and px spacing/font values in UI files and names the design token to use."
+    },
+    {
+      "name": "qa-gate",
+      "source": "./mods/qa-gate",
+      "description": "Runs lint, type check, spell check and test scripts before Claude finishes a turn that changed code."
+    },
+    {
+      "name": "secret-scrubber",
+      "source": "./mods/secret-scrubber",
+      "description": "Redacts keys, tokens, passwords, .env values and private keys from tool output before Claude reads it."
+    }
+  ]
+}

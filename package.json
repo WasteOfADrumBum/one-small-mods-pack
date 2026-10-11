@@ -1,0 +1,16 @@
+{
+  "name": "guardrail-mods",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Claude Code mods that hold Claude to accessibility, design-token, quality and secret-handling rules.",
+  "license": "MIT",
+  "scripts": {
+    "validate": "claude plugin validate . && for mod in mods/*/; do claude plugin validate \"$mod\" || exit 1; done",
+    "test": "for mod in mods/*/; do claude plugin test \"$mod\" || exit 1; done",
+    "typecheck": "tsc -p .",
+    "check": "npm run typecheck && npm run validate && npm test"
+  },
+  "devDependencies": {
+    "typescript": "^5.4.0"
+  }
+}

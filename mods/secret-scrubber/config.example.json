@@ -1,0 +1,9 @@
+{
+  "enabled": true,
+  "showToast": true,
+  "disabledRules": [],
+  "patternsFile": "",
+  "patterns": [
+    { "name": "acme-key", "pattern": "acme_[A-Za-z0-9]{32}" }
+  ]
+}
