@@ -1,0 +1,15 @@
+{
+  "enabled": true,
+  "packageJson": "package.json",
+  "packageManager": "auto",
+  "checks": ["lint", "typecheck", "spellcheck", "test"],
+  "scripts": {
+    "lint": ["lint"],
+    "typecheck": ["typecheck", "type-check", "check-types", "types", "tsc"],
+    "spellcheck": ["spellcheck", "spell-check", "spell", "cspell"],
+    "test": ["test", "test:unit"]
+  },
+  "codeExtensions": [".ts", ".tsx", ".js", ".jsx", ".mjs", ".cjs", ".vue", ".svelte", ".css", ".scss", ".html", ".json", ".md"],
+  "maxAttempts": 3,
+  "timeoutMs": 300000
+}

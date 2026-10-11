@@ -1,0 +1,12 @@
+{
+  "enabled": true,
+  "extensions": [".tsx", ".jsx", ".html", ".vue", ".css"],
+  "eslint": true,
+  "eslintCommand": "npx --no-install eslint",
+  "eslintRulePrefixes": ["jsx-a11y/", "vuejs-accessibility/"],
+  "axe": true,
+  "nodeCommand": "node",
+  "contrast": true,
+  "blockStopUntilFixed": true,
+  "timeoutMs": 60000
+}

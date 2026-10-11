@@ -1,0 +1,40 @@
+{
+  "name": "wcag-enforcer",
+  "version": "0.1.0",
+  "description": "After each Write or Edit to .tsx, .jsx, .html, .vue or .css files, runs eslint-plugin-jsx-a11y, axe-core and a WCAG 2.2 AA contrast check, and hands Claude every failure with file, line and rule to fix before it moves on.",
+  "author": { "name": "Joshua Small" },
+  "license": "MIT",
+  "keywords": ["accessibility", "a11y", "wcag", "axe-core", "eslint", "guardrail"],
+  "userConfig": {
+    "enabled": {
+      "type": "boolean",
+      "title": "Enabled",
+      "description": "Turn the accessibility checks on or off.",
+      "default": true
+    },
+    "configFile": {
+      "type": "string",
+      "title": "Project config file",
+      "description": "JSON file, relative to the project, whose keys override these options (enabled, extensions, eslint, eslintCommand, eslintRulePrefixes, axe, nodeCommand, contrast, blockStopUntilFixed, timeoutMs).",
+      "default": ".claude/guardrail-mods/wcag-enforcer.json"
+    },
+    "extensions": {
+      "type": "string",
+      "title": "Checked file extensions",
+      "description": "Comma-separated extensions checked after a Write or Edit.",
+      "default": ".tsx,.jsx,.html,.vue,.css"
+    },
+    "eslintCommand": {
+      "type": "string",
+      "title": "ESLint command",
+      "description": "How to run the project's ESLint (its config must enable eslint-plugin-jsx-a11y, or eslint-plugin-vuejs-accessibility for .vue).",
+      "default": "npx --no-install eslint"
+    },
+    "blockStopUntilFixed": {
+      "type": "boolean",
+      "title": "Hold the turn until fixed",
+      "description": "When Claude tries to finish with failures still open, send it back to fix them (at most twice in a row).",
+      "default": true
+    }
+  }
+}

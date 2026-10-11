@@ -1,0 +1,43 @@
+{
+  "name": "qa-gate",
+  "version": "0.1.0",
+  "description": "When Claude tries to finish a turn after editing code, runs the project's lint, type check, spell check and test scripts from package.json, and keeps Claude working until they pass. Scripts that don't exist are skipped.",
+  "author": { "name": "Joshua Small" },
+  "license": "MIT",
+  "keywords": ["quality", "lint", "typecheck", "tests", "ci", "guardrail"],
+  "userConfig": {
+    "enabled": {
+      "type": "boolean",
+      "title": "Enabled",
+      "description": "Turn the end-of-turn quality gate on or off.",
+      "default": true
+    },
+    "configFile": {
+      "type": "string",
+      "title": "Project config file",
+      "description": "JSON file, relative to the project, whose keys override these options (enabled, packageJson, packageManager, checks, scripts, codeExtensions, maxAttempts, timeoutMs).",
+      "default": ".claude/guardrail-mods/qa-gate.json"
+    },
+    "packageJson": {
+      "type": "string",
+      "title": "package.json path",
+      "description": "The package.json whose scripts the gate runs, relative to the project; scripts run in its folder.",
+      "default": "package.json"
+    },
+    "packageManager": {
+      "type": "string",
+      "title": "Package manager",
+      "description": "How to run the scripts; auto picks from the lockfile.",
+      "options": ["auto", "npm", "pnpm", "yarn", "bun"],
+      "default": "auto"
+    },
+    "maxAttempts": {
+      "type": "number",
+      "title": "Max attempts",
+      "description": "How many times in a row the gate sends Claude back before it lets the turn end anyway.",
+      "default": 3,
+      "min": 1,
+      "max": 20
+    }
+  }
+}

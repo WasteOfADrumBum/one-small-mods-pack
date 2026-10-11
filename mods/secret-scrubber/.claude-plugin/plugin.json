@@ -1,0 +1,34 @@
+{
+  "name": "secret-scrubber",
+  "version": "0.1.0",
+  "description": "Redacts API keys, tokens, passwords, .env values and private keys from tool output before Claude reads it, and counts the redactions in the status line.",
+  "author": { "name": "Joshua Small" },
+  "license": "MIT",
+  "keywords": ["security", "secrets", "redaction", "guardrail"],
+  "userConfig": {
+    "enabled": {
+      "type": "boolean",
+      "title": "Enabled",
+      "description": "Turn secret redaction on or off.",
+      "default": true
+    },
+    "configFile": {
+      "type": "string",
+      "title": "Project config file",
+      "description": "JSON file, relative to the project, whose keys override these options (enabled, showToast, disabledRules, patterns, patternsFile).",
+      "default": ".claude/guardrail-mods/secret-scrubber.json"
+    },
+    "patternsFile": {
+      "type": "string",
+      "title": "Extra patterns file",
+      "description": "Optional JSON file with { \"patterns\": [{ \"name\", \"pattern\", \"flags\"?, \"group\"? }] } added to the built-in rules.",
+      "default": ""
+    },
+    "showToast": {
+      "type": "boolean",
+      "title": "Toast on redaction",
+      "description": "Show a toast naming what was redacted each time output is scrubbed (the status line count shows either way).",
+      "default": true
+    }
+  }
+}

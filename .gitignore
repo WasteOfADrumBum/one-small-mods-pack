@@ -1,0 +1,4 @@
+node_modules/
+# Laid by Claude Code beside a mod it loads from a folder it watches
+mods/*/.claude-plugin/types/
+mods/*/tsconfig.json

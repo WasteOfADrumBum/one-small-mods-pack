@@ -1,0 +1,8 @@
+{
+  "enabled": true,
+  "tokensFile": "design-tokens.json",
+  "extensions": [".css", ".scss", ".sass", ".less", ".tsx", ".jsx", ".vue", ".html", ".svelte", ".astro"],
+  "ignore": ["**/*.stories.tsx", "legacy/**"],
+  "allow": ["0", "0px"],
+  "maxReported": 20
+}
