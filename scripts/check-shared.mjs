@@ -3,8 +3,9 @@
 // each mod that needs them. This fails when the copies drift apart.
 import { readFileSync, readdirSync, existsSync } from 'node:fs'
 import path from 'node:path'
+import { projectRoot } from './root.mjs'
 
-const root = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..')
+const root = projectRoot(import.meta.url)
 const SHARED = ['hooks/config.ts', 'hooks/bash-writes.ts']
 
 let failed = false

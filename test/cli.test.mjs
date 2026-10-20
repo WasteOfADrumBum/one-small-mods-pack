@@ -5,7 +5,7 @@ import path from 'node:path'
 import { execFileSync } from 'node:child_process'
 
 import { main } from '../dist/lib.mjs'
-import { project, cli } from './helpers.mjs'
+import { ROOT, project, cli } from './helpers.mjs'
 
 const read = (dir, rel) => readFileSync(path.join(dir, rel), 'utf8')
 const files = dir => {
@@ -469,7 +469,7 @@ test('package gate: private packages are not applicable; missing bin and secrets
 })
 
 test('the CLI binary: --help, exit codes and stdin work end to end', async () => {
-  const bin = path.resolve(path.dirname(new URL(import.meta.url).pathname), '../dist/modspack.mjs')
+  const bin = path.join(ROOT, 'dist', 'modspack.mjs')
   const help = execFileSync('node', [bin, '--help']).toString()
   assert.match(help, /Exit codes: 0 ok, 1 a gate failed/)
   const p = project()

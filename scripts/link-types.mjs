@@ -10,8 +10,9 @@
 // The declarations are Anthropic's and are not redistributed in this repo.
 import { copyFileSync, existsSync, mkdirSync, readdirSync, readFileSync } from 'node:fs'
 import path from 'node:path'
+import { projectRoot } from './root.mjs'
 
-const root = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..')
+const root = projectRoot(import.meta.url)
 const target = path.join(root, 'types', 'claude-code.d.ts')
 
 const candidates = process.argv[2]

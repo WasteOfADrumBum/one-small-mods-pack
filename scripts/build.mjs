@@ -4,8 +4,9 @@
 // Claude Code mods run the same rules from one copy.
 import { build } from 'esbuild'
 import path from 'node:path'
+import { projectRoot } from './root.mjs'
 
-const root = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..')
+const root = projectRoot(import.meta.url)
 
 const common = {
   absWorkingDir: root,

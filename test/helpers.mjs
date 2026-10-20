@@ -4,9 +4,10 @@ import { tmpdir } from 'node:os'
 import path from 'node:path'
 import { execFileSync } from 'node:child_process'
 
+import { projectRoot } from '../scripts/root.mjs'
 import { main } from '../dist/lib.mjs'
 
-export const ROOT = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..')
+export const ROOT = projectRoot(import.meta.url)
 
 /** A temporary directory holding `files` ({ relative path: text }); removed by cleanup(). */
 export function project(files = {}, { git = false } = {}) {

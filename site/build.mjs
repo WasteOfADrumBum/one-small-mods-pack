@@ -6,8 +6,9 @@
 import { cpSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import { pathToFileURL } from 'node:url'
+import { projectRoot } from '../scripts/root.mjs'
 
-const root = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..')
+const root = projectRoot(import.meta.url)
 const out = path.join(root, 'site', 'dist')
 const lib = await import(pathToFileURL(path.join(root, 'dist', 'lib.mjs')).href)
 const pkg = JSON.parse(readFileSync(path.join(root, 'package.json'), 'utf8'))

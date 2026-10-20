@@ -28,6 +28,8 @@ These show discovery. Not covered: custom agent loading, a hook firing, a model 
 1. `claude --plugin-dir mods/qa-gate` and wait for the mod to load; Claude Code writes its type declarations beside it.
 2. `npm run types` then `npm run typecheck`. Fix real errors; do not add stub types.
 
+**Windows.** `npm run types`, `npm run build` and the test scripts run in PowerShell. `npm run validate` and `npm test` loop over the mods with POSIX shell syntax, so on Windows run them from Git Bash or WSL, or run `claude plugin validate` and `claude plugin test` per mod folder. All of these need the `claude` command on your PATH and signed in; without it the mod typecheck and live hook checks stay BLOCKED.
+
 **Live Claude Code hooks.** Start `claude --plugin-dir mods/privacy-guard --plugin-dir mods/secret-scrubber --plugin-dir mods/design-guardrail --plugin-dir mods/modspack-agents` in a scratch project. Ask Claude to write a file containing a clearly fake key shaped like `AKIA` plus 16 capital letters and digits, and a made-up diagnosis beside a name. Expected: the write is refused or the value is redacted, with the reason. Run `/agents` and confirm the six agents are listed.
 
 **Codex, Copilot, Gemini hooks and agents.** In a scratch project: `npm i -D one-small-modspack`, `npx modspack init --yes`, approve project hooks where asked (Codex: `/hooks`), start the tool, and ask it to write a file containing the same fake key. Expected: a denial naming the rule. Then ask it to use each agent by ID (`copilot --agent release-manager`, `@release-manager` in Gemini). Record the tool version and result.
