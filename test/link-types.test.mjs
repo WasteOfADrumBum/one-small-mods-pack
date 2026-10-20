@@ -51,8 +51,9 @@ test('root: forcing POSIX rules on a drive-letter URL is what produced C:\\C:', 
 })
 
 test('root: POSIX locations, spaces and encoded characters resolve as before', () => {
-  assert.equal(projectRoot('file:///home/me/one-small-mods-pack/scripts/link-types.mjs'), path.resolve('/home/me/one-small-mods-pack'))
-  assert.equal(projectRoot('file:///home/me/My%20Repos/a%23b/scripts/build.mjs'), path.resolve('/home/me/My Repos/a#b'))
+  // Synthetic POSIX URLs name the POSIX rules, so this holds on a Windows runner too.
+  assert.equal(projectRoot('file:///home/me/one-small-mods-pack/scripts/link-types.mjs', { windows: false }), '/home/me/one-small-mods-pack')
+  assert.equal(projectRoot('file:///home/me/My%20Repos/a%23b/scripts/build.mjs', { windows: false }), '/home/me/My Repos/a#b')
   assert.equal(projectRoot(pathToFileURL(path.join(ROOT, 'scripts', 'link-types.mjs')).href), ROOT)
   assert.equal(projectRoot(import.meta.url), ROOT)
 })
