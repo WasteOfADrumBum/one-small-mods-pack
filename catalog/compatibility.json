@@ -1,0 +1,113 @@
+{
+  "checkedOn": "2026-10-20",
+  "platforms": {
+    "claude-code": {
+      "label": "Claude Code",
+      "version": "2.1.304 (tested); mods need 2.1.287+",
+      "docs": ["https://code.claude.com/docs/en/plugins/mods", "https://code.claude.com/docs/en/skills", "https://code.claude.com/docs/en/sub-agents"]
+    },
+    "codex": {
+      "label": "OpenAI Codex",
+      "version": "not installed in the test environment",
+      "docs": ["https://developers.openai.com/codex/skills", "https://developers.openai.com/codex/subagents", "https://developers.openai.com/codex/hooks"]
+    },
+    "copilot": {
+      "label": "GitHub Copilot",
+      "version": "not installed in the test environment",
+      "docs": ["https://docs.github.com/en/copilot/reference/hooks-reference", "https://docs.github.com/en/copilot/how-tos/use-copilot-agents/coding-agent/create-custom-agents"]
+    },
+    "gemini": {
+      "label": "Gemini CLI",
+      "version": "not installed in the test environment",
+      "docs": ["https://geminicli.com/docs/cli/creating-skills/", "https://geminicli.com/docs/hooks/", "https://developers.googleblog.com/en/subagents-have-arrived-in-gemini-cli/"]
+    }
+  },
+  "capabilities": {
+    "repository-instructions": "Project instructions file the tool reads (a marker-delimited ModsPack block is merged in, never overwriting).",
+    "skill-discovery": "The tool finds the installed Agent Skills.",
+    "skill-invocation": "A skill can be invoked by name or picked by description.",
+    "custom-agents": "The six agent roles in the tool's own agent format.",
+    "agent-delegation": "The main session can hand a task to one of the agents.",
+    "automatic-hooks": "Guards run on their own at tool-use time.",
+    "security-blocking": "A guard can refuse a write that adds a secret, personal data or a hardcoded design value.",
+    "tool-execution": "Skills can run the modspack CLI and project scripts.",
+    "installation": "modspack init installs the integration.",
+    "updates": "Re-running modspack init updates files it owns and leaves edited ones alone.",
+    "uninstallation": "modspack uninstall removes what it installed and nothing else.",
+    "ci-integration": "Deterministic checks in CI without any AI client."
+  },
+  "matrix": {
+    "repository-instructions": {
+      "claude-code": { "status": "partial", "verified": "static", "note": "CLAUDE.md block is written and read back by tests; Claude Code reading it was not exercised live." },
+      "codex": { "status": "partial", "verified": "static", "note": "AGENTS.md block; documented by OpenAI, not runtime-tested here." },
+      "copilot": { "status": "partial", "verified": "static", "note": "AGENTS.md block (Copilot reads AGENTS.md and .github/copilot-instructions.md); not runtime-tested." },
+      "gemini": { "status": "partial", "verified": "static", "note": "GEMINI.md block; not runtime-tested." }
+    },
+    "skill-discovery": {
+      "claude-code": { "status": "partial", "verified": "static", "note": "Skills ship in the modspack-agents plugin; claude plugin validate passes. Live discovery not exercised (mods rollout flag off in the test container)." },
+      "codex": { "status": "partial", "verified": "static", "note": ".agents/skills/<name>/SKILL.md per the Agent Skills spec, validated by tests; not runtime-tested." },
+      "copilot": { "status": "partial", "verified": "static", "note": ".agents/skills (Copilot also reads .github/skills and .claude/skills); not runtime-tested." },
+      "gemini": { "status": "partial", "verified": "static", "note": ".agents/skills alias of .gemini/skills; activation asks the user first; not runtime-tested." }
+    },
+    "skill-invocation": {
+      "claude-code": { "status": "partial", "verified": "static", "note": "/modspack-agents:<skill> or by description; not exercised live." },
+      "codex": { "status": "partial", "verified": "static", "note": "$<skill> or implicit by description; not runtime-tested." },
+      "copilot": { "status": "partial", "verified": "static", "note": "By description in agent mode and Copilot CLI; not runtime-tested." },
+      "gemini": { "status": "partial", "verified": "static", "note": "Activated by description after the user approves; not runtime-tested." }
+    },
+    "custom-agents": {
+      "claude-code": { "status": "partial", "verified": "static", "note": "agents/*.md in the plugin; validate passes." },
+      "codex": { "status": "partial", "verified": "static", "note": ".codex/agents/<name>.toml (name, description, developer_instructions); tool limits are stated in instructions because the file cannot set sandbox_mode." },
+      "copilot": { "status": "partial", "verified": "static", "note": ".github/agents/<name>.agent.md with tools aliases (read, search, edit, execute)." },
+      "gemini": { "status": "partial", "verified": "static", "note": ".gemini/agents/<name>.md with Gemini tool names." }
+    },
+    "agent-delegation": {
+      "claude-code": { "status": "partial", "verified": "static", "note": "Subagents via the Task tool; not exercised live." },
+      "codex": { "status": "partial", "verified": "static", "note": "Codex spawns custom agents by name; not runtime-tested." },
+      "copilot": { "status": "partial", "verified": "static", "note": "copilot --agent <name> or the agent picker; not runtime-tested." },
+      "gemini": { "status": "partial", "verified": "static", "note": "Subagents are called by the main agent; not runtime-tested." }
+    },
+    "automatic-hooks": {
+      "claude-code": { "status": "supported", "verified": "harness", "note": "Five mods, verified with claude plugin test (stubbed engine). Live load not exercised in the test container." },
+      "codex": { "status": "partial", "verified": "static", "note": ".codex/hooks.json PreToolUse → modspack hook codex. Project hooks run only after the user trusts them (/hooks). Hook protocol tested with recorded payloads, not a live Codex." },
+      "copilot": { "status": "partial", "verified": "static", "note": ".github/hooks/modspack.json preToolUse → modspack hook copilot. Tested with recorded payloads, not a live Copilot." },
+      "gemini": { "status": "partial", "verified": "static", "note": ".gemini/settings.json BeforeTool → modspack hook gemini. Tested with recorded payloads, not a live Gemini CLI." }
+    },
+    "security-blocking": {
+      "claude-code": { "status": "supported", "verified": "harness", "note": "design-guardrail and privacy-guard refuse writes; secret-scrubber redacts reads." },
+      "codex": { "status": "partial", "verified": "static", "note": "Pre-write deny for secrets, personal data and design values. No output redaction: Codex hooks cannot rewrite tool output." },
+      "copilot": { "status": "partial", "verified": "static", "note": "Pre-write deny; no output redaction." },
+      "gemini": { "status": "partial", "verified": "static", "note": "Pre-write deny; no output redaction." }
+    },
+    "tool-execution": {
+      "claude-code": { "status": "supported", "verified": "runtime", "note": "Skills call npx modspack; the CLI was run in tests." },
+      "codex": { "status": "cli-fallback", "verified": "runtime", "note": "Skills tell the agent to run npx modspack; the CLI itself is tested." },
+      "copilot": { "status": "cli-fallback", "verified": "runtime", "note": "As for Codex." },
+      "gemini": { "status": "cli-fallback", "verified": "runtime", "note": "As for Codex." }
+    },
+    "installation": {
+      "claude-code": { "status": "supported", "verified": "runtime", "note": "/plugin install <mod>@guardrail-mods; modspack init writes the CLAUDE.md block and offers .claude/skills when the plugin is not used. Tested on fixture projects." },
+      "codex": { "status": "supported", "verified": "runtime", "note": "modspack init --platform codex writes AGENTS.md block, .agents/skills, .codex/agents, .codex/hooks.json. Tested on fixture projects (files, not a live client)." },
+      "copilot": { "status": "supported", "verified": "runtime", "note": "modspack init --platform copilot; tested on fixture projects." },
+      "gemini": { "status": "supported", "verified": "runtime", "note": "modspack init --platform gemini; tested on fixture projects." }
+    },
+    "updates": {
+      "claude-code": { "status": "supported", "verified": "runtime", "note": "/plugin update for mods; modspack init is idempotent (tested)." },
+      "codex": { "status": "supported", "verified": "runtime", "note": "Re-running init updates unmodified files, keeps edited ones (tested)." },
+      "copilot": { "status": "supported", "verified": "runtime", "note": "As for Codex (tested)." },
+      "gemini": { "status": "supported", "verified": "runtime", "note": "As for Codex (tested)." }
+    },
+    "uninstallation": {
+      "claude-code": { "status": "supported", "verified": "runtime", "note": "/plugin uninstall; modspack uninstall removes only unmodified files it wrote (tested)." },
+      "codex": { "status": "supported", "verified": "runtime", "note": "modspack uninstall (tested)." },
+      "copilot": { "status": "supported", "verified": "runtime", "note": "modspack uninstall (tested)." },
+      "gemini": { "status": "supported", "verified": "runtime", "note": "modspack uninstall (tested)." }
+    },
+    "ci-integration": {
+      "claude-code": { "status": "supported", "verified": "runtime", "note": "npx modspack release-check in any CI; no AI client involved." },
+      "codex": { "status": "supported", "verified": "runtime", "note": "Same CLI." },
+      "copilot": { "status": "supported", "verified": "runtime", "note": "Same CLI; init can add .github/workflows/modspack.yml." },
+      "gemini": { "status": "supported", "verified": "runtime", "note": "Same CLI." }
+    }
+  }
+}

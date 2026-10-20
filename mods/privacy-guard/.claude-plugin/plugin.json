@@ -1,0 +1,49 @@
+{
+  "name": "privacy-guard",
+  "version": "2.0.0",
+  "description": "Before a Write or Edit, checks the content Claude adds for real-looking personal and health data (SSNs, payment cards, IBANs, medical record numbers, named people beside diagnoses) and blocks high-severity values, with notes for the rest. Known test values pass.",
+  "author": {
+    "name": "Joshua Small"
+  },
+  "license": "MIT",
+  "keywords": [
+    "privacy",
+    "pii",
+    "phi",
+    "hipaa",
+    "guardrail"
+  ],
+  "userConfig": {
+    "enabled": {
+      "type": "boolean",
+      "title": "Enabled",
+      "description": "Turn the personal and health data check on or off.",
+      "default": true
+    },
+    "configFile": {
+      "type": "string",
+      "title": "Project config file",
+      "description": "JSON file, relative to the project, whose keys override these options (enabled, mode, blockAt, noteAt, publicContacts, allowDomains, ignore).",
+      "default": ".claude/guardrail-mods/privacy-guard.json"
+    },
+    "mode": {
+      "type": "string",
+      "title": "Mode",
+      "description": "block refuses writes with high-severity values; warn only adds notes.",
+      "options": ["block", "warn"],
+      "default": "block"
+    },
+    "publicContacts": {
+      "type": "string",
+      "title": "Public contacts",
+      "description": "Comma-separated email addresses and phone numbers meant to be public, never flagged.",
+      "default": ""
+    },
+    "ignore": {
+      "type": "string",
+      "title": "Ignored paths",
+      "description": "Comma-separated globs the guard skips.",
+      "default": ""
+    }
+  }
+}
