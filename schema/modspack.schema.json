@@ -155,7 +155,7 @@
       "type": "object",
       "additionalProperties": false,
       "properties": {
-        "dir": { "description": "Where --write puts reports. Default: .modspack/reports (git-ignored by init).", "type": "string" }
+        "dir": { "description": "Where --write puts reports. Default: .modspack/reports. Add it to .gitignore.", "type": "string" }
       }
     }
   }

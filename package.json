@@ -55,7 +55,8 @@
     "test:cli": "npm run build && node --test test/*.test.mjs",
     "site": "npm run build && node site/build.mjs",
     "check": "npm run shared && npm run typecheck:cli && npm run test:cli && npm run validate && npm test",
-    "prepack": "npm run build"
+    "prepack": "npm run build",
+    "test:all": "npm run shared && npm run test:cli && npm run validate && npm test"
   },
   "devDependencies": {
     "@types/node": "^22.20.5",

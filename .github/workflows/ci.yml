@@ -1,0 +1,42 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  # Needs no AI tool: this is the same check a downstream project runs.
+  cli:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx tsc -p tsconfig.cli.json
+      - run: npm run shared
+      - run: node --test --test-timeout=120000 test/*.test.mjs
+      - run: npm pack --dry-run
+
+  # The mods need the Claude Code harness (plugin validate / plugin test).
+  # Pin the version so a new release cannot change results silently.
+  mods:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm install --global @anthropic-ai/claude-code@2.1.304
+      - run: npm run validate
+      - run: npm test

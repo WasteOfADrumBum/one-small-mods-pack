@@ -27,7 +27,7 @@ export function renderText(gates: readonly GateResult[], { verbose = false } = {
     for (const check of gate.checks) {
       lines.push(`  ${ICON[check.status]} ${check.name}${check.required ? '' : ' (optional)'}: ${check.summary}`)
       for (const detail of check.details ?? []) lines.push(`      ${detail}`)
-      const findings = (check.findings ?? []).filter(f => verbose || (f.severity !== 'info' && f.confidence !== 'possible'))
+      const findings = (check.findings ?? []).filter(f => verbose || ((f.severity === 'critical' || f.severity === 'high' || f.severity === 'medium') && f.confidence !== 'possible'))
       lines.push(...findingLines(findings, verbose ? 500 : 15))
     }
   }

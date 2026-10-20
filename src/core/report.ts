@@ -63,7 +63,7 @@ export function gateStatus(checks: readonly CheckResult[]): Status {
 
 /** The exit code for a set of gates in the given mode. Advisory never fails, but a required check that could not run still exits 3. */
 export function exitCode(gates: readonly GateResult[], mode: 'enforce' | 'advisory'): number {
-  if (gates.some(g => g.status === 'BLOCKED')) return EXIT.blocked
+  if (gates.some(g => g.status === 'BLOCKED' || g.checks.some(c => c.required && (c.status === 'BLOCKED' || c.status === 'NOT_TESTED')))) return EXIT.blocked
   if (mode === 'enforce' && gates.some(g => g.status === 'FAIL')) return EXIT.failed
   return EXIT.ok
 }
