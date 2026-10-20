@@ -38,8 +38,8 @@
     "mods/modspack-agents/skills",
     "catalog",
     "schema",
-    "templates",
-    "CHANGELOG.md"
+    "CHANGELOG.md",
+    "docs"
   ],
   "engines": {
     "node": ">=20"
@@ -56,7 +56,8 @@
     "site": "npm run build && node site/build.mjs",
     "check": "npm run shared && npm run typecheck:cli && npm run test:cli && npm run validate && npm test",
     "prepack": "npm run build",
-    "test:all": "npm run shared && npm run test:cli && npm run validate && npm test"
+    "test:all": "npm run shared && npm run test:cli && npm run validate && npm test",
+    "site:check": "npm run site && node scripts/site-browser-check.mjs"
   },
   "devDependencies": {
     "@types/node": "^22.20.5",

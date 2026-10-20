@@ -1,4 +1,29 @@
-# guardrail-mods
+# One Small ModsPack
+
+> **2.0 (unreleased draft).** Version 2.0 grows this repository from four Claude Code mods into a vendor-neutral toolkit. The original `guardrail-mods` marketplace and its four mods are unchanged. Documentation: [`docs/`](docs) and the generated site (`npm run site`, output in `site/dist`).
+
+One set of **agents**, **skills** and **guards** for Claude Code, OpenAI Codex, GitHub Copilot and Gemini CLI, plus the `modspack` command line tool that runs the same deterministic checks in CI with no AI model, no telemetry and no network (the dependency audit is opt-in).
+
+| Part | What it is |
+| :-- | :-- |
+| 6 agents | release-manager, code-reviewer, qa-engineer, accessibility-auditor, security-privacy-auditor, release-engineer ([`mods/modspack-agents/agents`](mods/modspack-agents/agents)) |
+| 12 skills | Agent Skills format, shared by all four tools ([`mods/modspack-agents/skills`](mods/modspack-agents/skills)) |
+| Guards | the four mods below, the new `privacy-guard`, and the CLI's security scan and release gate ([`catalog/guards.json`](catalog/guards.json)) |
+| CLI | `modspack inspect / init / doctor / uninstall / check / security / privacy / accessibility / release-check / hook` ([CLI reference](docs/cli.md)) |
+
+```text
+npx one-small-modspack inspect        # read-only: what AI configuration exists
+npx one-small-modspack init           # preview; add --yes to apply (never overwrites your files)
+npx one-small-modspack release-check  # READY or NOT READY, with the steps to get there
+```
+
+The package is not published to npm. From a clone: `npm ci && npm run build && node dist/modspack.mjs --help`.
+
+**What it is not.** It does not certify HIPAA, WCAG or any other compliance, and its HIPAA-related review marks organisational safeguards NOT ASSESSED. Platform support is stated per capability in [`catalog/compatibility.json`](catalog/compatibility.json); runtime on Codex, Copilot and Gemini CLI is NOT TESTED in this release. See [known limitations](docs/limitations.md). Update with `modspack init`, remove with `modspack uninstall --yes`; see [getting started](docs/getting-started.md), [configuration](docs/configuration.md), [CI](docs/ci.md), [troubleshooting](docs/troubleshooting.md) and [migration](docs/migration.md).
+
+---
+
+## The Claude Code mods
 
 Four [Claude Code mods](https://code.claude.com/docs/en/plugins/mods) that hold Claude to your project's rules while it works. Each mod is its own plugin under [`mods/`](mods), written in TypeScript, and the repository is a plugin marketplace named `guardrail-mods`.
 

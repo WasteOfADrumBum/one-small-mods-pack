@@ -1,0 +1,43 @@
+# Getting started
+
+ModsPack gives your AI coding tool a shared set of agent roles, skills and guards, and gives your CI the same checks without any AI model.
+
+## Terms
+
+- **Agent**: a role definition (for example the code reviewer) with a fixed tool allowance.
+- **Skill**: a reusable procedure in the open Agent Skills format (`SKILL.md`), shared by all four tools.
+- **Guard**: a check on code or output. Some run as hooks while an AI tool works, all run from the CLI.
+- **Hook**: a command the AI tool runs before or after a tool call. Hooks here fail open and are a convenience, not the enforcement point.
+- **CLI check**: a deterministic `modspack` command. It needs no AI model and no network.
+- **Release gate**: a group of required checks (quality, security, privacy, accessibility, package) that `modspack release-check` turns into READY or NOT READY.
+
+## Try it without changing anything
+
+```text
+npx one-small-modspack inspect
+npx one-small-modspack init
+```
+
+`inspect` is read-only. `init` prints what it would write and writes nothing until you add `--yes`. It never overwrites a file it did not create, and it merges into `AGENTS.md`, `CLAUDE.md` and `GEMINI.md` inside a marked block so your own instructions stay as they are.
+
+## Install for your tools
+
+```text
+npx one-small-modspack init --platform codex --yes
+npx one-small-modspack init --platform copilot,gemini --yes
+npx one-small-modspack init --platform claude-code --yes
+```
+
+The package is not published to npm yet, so until it is, run it from a clone: `npm ci && npm run build && node dist/modspack.mjs init`.
+
+For Claude Code you can also install the mods as plugins from the `guardrail-mods` marketplace. See the repository README.
+
+## Use it
+
+- Ask your tool to use a skill by name, for example "use the release-readiness skill".
+- Run `modspack release-check` before a release. It prints READY or NOT READY and, when not ready, the smallest steps to get there.
+- Add `--ci` to `init` to get a GitHub Actions workflow that runs the same command.
+
+## Update and uninstall
+
+Run `init` again to update; files you edited are kept and reported. `modspack uninstall --yes` removes only what `init` installed, using the manifest in `.modspack/manifest.json`.
