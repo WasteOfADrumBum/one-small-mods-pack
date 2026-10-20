@@ -36,6 +36,7 @@ function inline(text) {
 function markdown(src, { shift = 0 } = {}) {
   const lines = src.split('\n')
   const html = []
+  let tables = 0
   let i = 0
   while (i < lines.length) {
     const line = lines[i]
@@ -55,7 +56,7 @@ function markdown(src, { shift = 0 } = {}) {
       while (i < lines.length && lines[i].startsWith('|')) rows.push(lines[i++])
       const cells = r => r.replace(/^\||\|$/g, '').split('|').map(c => c.trim())
       const [head, , ...body] = rows
-      html.push(`<div class="table-wrap" tabindex="0" role="region" aria-label="Table"><table><thead><tr>${cells(head).map(c => `<th scope="col">${inline(c)}</th>`).join('')}</tr></thead><tbody>${body.map(r => `<tr>${cells(r).map(c => `<td>${inline(c)}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`)
+      html.push(`<div class="table-wrap" tabindex="0" role="region" aria-label="${esc(`Table ${++tables}: ${cells(head).join(', ')}`)}"><table><thead><tr>${cells(head).map(c => `<th scope="col">${inline(c)}</th>`).join('')}</tr></thead><tbody>${body.map(r => `<tr>${cells(r).map(c => `<td>${inline(c)}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`)
     } else if (/^[-*] /.test(line)) {
       const items = []
       while (i < lines.length && /^[-*] /.test(lines[i])) items.push(lines[i++].slice(2))
