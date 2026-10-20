@@ -74,9 +74,10 @@ const MRN = /\b(mrn|medical[\s_-]*record[\s_-]*(?:number|no|#)?)\b["']?\s*[:=#]?
 const MBI = /\b[1-9][AC-HJKMNP-RT-Y][AC-HJKMNP-RT-Y0-9]\d-?[AC-HJKMNP-RT-Y][AC-HJKMNP-RT-Y0-9]\d-?[AC-HJKMNP-RT-Y]{2}\d{2}\b/g
 const INSURANCE = /\b(member[\s_-]*id|policy[\s_-]*(?:number|no)|subscriber[\s_-]*id|insurance[\s_-]*id|group[\s_-]*number)\b["']?\s*[:=#]\s*["']?([A-Z0-9-]{6,20})\b/gi
 
-const HEALTH_TERMS = /\b(diagnos[ie]s|icd-?10|patient|treatment|prescription|medication|condition|allerg(y|ies)|hiv|oncology|psychiatric|lab[\s_-]*result|blood[\s_-]*type|pregnan(t|cy))\b/i
-const ICD10 = /\b[A-TV-Z]\d{2}(?:\.\d{1,4})?\b/
-const SENSITIVE_ATTRS = /\b(salary|income|religion|ethnicity|sexual[\s_-]*orientation|criminal|immigration|credit[\s_-]*score|password)\b/i
+// Health and sensitive attributes count only as fields of a record (`"diagnosis": ...`, `condition: ...`),
+// so prose that merely mentions a diagnosis is not mistaken for a record about someone.
+const HEALTH_FIELD = /\b(diagnos[ie]s|diagnosis[\s_-]*code|icd[\s_-]*10(?:[\s_-]*code)?|icd|conditions?|medications?|prescriptions?|treatments?|allerg(?:y|ies)|lab[\s_-]*results?|blood[\s_-]*type|procedure[\s_-]*code|cpt)\b["']?\s*[:=]/i
+const SENSITIVE_FIELD = /\b(salary|income|religion|ethnicity|sexual[\s_-]*orientation|criminal[\s_-]*record|immigration[\s_-]*status|credit[\s_-]*score)\b["']?\s*[:=]/i
 const NAME_FIELD = /\b(full[\s_-]*name|first[\s_-]*name|last[\s_-]*name|patient[\s_-]*name|name)\b["']?\s*[:=]\s*["']([A-Z][a-z]+(?: [A-Z][a-z]+)+)["']/
 
 const luhn = (digits: string) => {
@@ -141,7 +142,7 @@ export function findPrivacy(text: string, options: PrivacyOptions = {}): Privacy
       if (publicEmails.has(value.toLowerCase())) continue
       // Package and git noise: user@1.2.3, git@github.com
       if (/^\d/.test(domain) || /^git$/i.test(local)) continue
-      const linked = HEALTH_TERMS.test(record) || SENSITIVE_ATTRS.test(record)
+      const linked = HEALTH_FIELD.test(record) || SENSITIVE_FIELD.test(record)
       add({
         kind: 'email',
         category: 'pii',
@@ -231,10 +232,9 @@ export function findPrivacy(text: string, options: PrivacyOptions = {}): Privacy
     // A name beside health information (or sensitive attributes) is a record about a person.
     const name = NAME_FIELD.exec(line)
     if (name !== null) {
-      const health = HEALTH_TERMS.test(record) && (ICD10.test(record) || /\b(diagnos|treatment|prescription|medication)/i.test(record))
-      if (health) {
+      if (HEALTH_FIELD.test(record)) {
         add({ kind: 'phi-record', category: 'phi', severity: 'high', confidence: 'likely', value: name[2] ?? '', synthetic: false, reason: 'a named person beside diagnosis or treatment details' })
-      } else if (SENSITIVE_ATTRS.test(record)) {
+      } else if (SENSITIVE_FIELD.test(record)) {
         add({ kind: 'sensitive-record', category: 'pii', severity: 'medium', confidence: 'possible', value: name[2] ?? '', synthetic: false, reason: 'a named person beside sensitive attributes' })
       }
     }

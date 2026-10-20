@@ -14,6 +14,20 @@ const TODOIST = '0123456789abcdef' + '0123456789abcdef01234567'
 const VERCEL = 'Ab3dEf6hIj9kLm2nOp5qRs8t'
 const KEY_BLOCK = ['-----BEGIN RSA ' + 'PRIVATE KEY-----', 'MIIEowIBAAKCAQEAx', '-----END RSA ' + 'PRIVATE KEY-----'].join('\n')
 
+describe('scrub on hostile input', () => {
+  test('a long alphanumeric line scrubs in linear time', () => {
+    const started = Date.now()
+    const out = scrub('a'.repeat(200_000), BUILTIN_RULES)
+    expect(out.count).toBe(0)
+    expect(Date.now() - started).toBeLessThan(2000)
+  })
+
+  test('still redacts a secret named with a long prefix and suffix', () => {
+    const out = scrub('my_service_prod_database_password_value=Xk9mQ2vL8nR4tZ7w', BUILTIN_RULES)
+    expect(out.kinds).toEqual(['generic-secret'])
+  })
+})
+
 describe('scrub', () => {
   test('redacts each provider token by name', () => {
     const cases: [string, string][] = [

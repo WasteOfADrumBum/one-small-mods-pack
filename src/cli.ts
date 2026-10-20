@@ -4,9 +4,13 @@
 import { readFileSync } from 'node:fs'
 import path from 'node:path'
 
-import { ConfigError } from './core/config'
+import { privacyGate, securityGate } from './checks/gates'
+import { ConfigError, loadConfig } from './core/config'
+import type { ModspackConfig } from './core/config'
 import { PACKAGE_ROOT } from './core/paths'
-import { EXIT } from './core/report'
+import { renderMarkdown, renderText, writeReports } from './core/render'
+import { EXIT, exitCode } from './core/report'
+import type { GateResult } from './core/report'
 import { validatePackage } from './core/validate-package'
 
 export type Io = { out: (text: string) => void; err: (text: string) => void; cwd: string }
@@ -18,20 +22,46 @@ const HELP = `modspack ${VERSION}: AI development agents, skills and guards for 
 Usage: modspack <command> [options]
 
 Commands:
+  security        scan for committed secrets, CI and supply-chain risks, client exposure
+  privacy         scan for personal and health data; HIPAA-related review when it applies
   validate        validate the shipped agent and skill definitions and catalogs
 
 Options:
   --dir <path>    project directory (default: the current directory)
   --json          print JSON instead of text
+  --write         also write Markdown and JSON reports to report.dir (.modspack/reports)
+  --advisory      report only: exit 0 even when a gate fails (a check that could not run still exits 3)
+  --verbose       list every finding, informational ones included
+  --history       (privacy) also scan git history for personal data
+  --no-history    (security) skip the git history scan
+  --audit-deps    (security) run npm audit; sends the dependency list to the registry
   -h, --help      show this help
   -v, --version   print the version
 
 Exit codes: 0 ok, 1 a gate failed, 2 usage or config error, 3 a required check could not run.`
 
+/** Prints gates, writes reports when asked, and returns the exit code for the mode. */
+function finish(io: Io, args: Args, dir: string, config: ModspackConfig, name: string, title: string, gates: GateResult[], json: Record<string, unknown> = {}, extra: string[] = []): number {
+  const mode = args.flags.advisory ? 'advisory' : config.mode
+  const code = exitCode(gates, mode)
+  const payload = { tool: 'modspack', command: name, mode, exitCode: code, gates, ...json }
+  if (args.flags.json) io.out(JSON.stringify(payload, null, 2))
+  else io.out(renderText(gates, { verbose: Boolean(args.flags.verbose) }) + (extra.length > 0 ? '\n\n' + extra.join('\n') : ''))
+  if (args.flags.write) {
+    const written = writeReports(dir, config.report.dir, name, renderMarkdown(title, gates, extra), payload)
+    if (!args.flags.json) io.out(`\nreports: ${written.map(f => path.relative(dir, f)).join(', ')}`)
+  }
+  return code
+}
+
+function projectDir(io: Io, args: Args): string {
+  return path.resolve(io.cwd, typeof args.flags.dir === 'string' ? args.flags.dir : '.')
+}
+
 export type Args = { command: string | undefined; flags: Record<string, string | boolean>; lists: Record<string, string[]>; positional: string[] }
 
 const LIST_FLAGS = new Set(['platform', 'skill', 'agent'])
-const VALUE_FLAGS = new Set(['dir', 'write', 'platform', 'skill', 'agent', 'format', 'event'])
+const VALUE_FLAGS = new Set(['dir', 'platform', 'skill', 'agent', 'format', 'event'])
 
 export function parseArgs(argv: readonly string[]): Args {
   const flags: Record<string, string | boolean> = {}
@@ -57,6 +87,10 @@ export function parseArgs(argv: readonly string[]): Args {
   }
   return { command: positional.shift(), flags, lists, positional }
 }
+
+const policyNote = (config: ModspackConfig) => [
+  `Policy: open findings at ${config.security.failOn} or above fail the gate when confirmed, and need review when likely. Dismiss one by adding its fingerprint to security.accepted in modspack.config.json with a reason.`,
+]
 
 export class UsageError extends Error {}
 
@@ -84,6 +118,21 @@ export async function main(argv: readonly string[], io: Io = { out: t => process
         else if (problems.length === 0) io.out('PASS definitions, schema and catalogs are valid')
         else io.out(['FAIL', ...problems.map(p => `  ${path.relative(PACKAGE_ROOT, p.file) || p.file}: ${p.message}`)].join('\n'))
         return problems.length === 0 ? EXIT.ok : EXIT.failed
+      }
+      case 'security': {
+        const dir = projectDir(io, args)
+        const { config } = loadConfig(dir)
+        const gate = securityGate(dir, config, { history: args.flags['no-history'] ? false : undefined, auditDeps: args.flags['audit-deps'] === true ? true : undefined })
+        const { findings, ...result } = gate
+        return finish(io, args, dir, config, 'security', 'Security report', [result], {}, policyNote(config))
+      }
+      case 'privacy': {
+        const dir = projectDir(io, args)
+        const { config } = loadConfig(dir)
+        const gate = privacyGate(dir, config, { history: Boolean(args.flags.history) })
+        const { findings, hipaa, ...result } = gate
+        const extra = hipaa.active ? ['HIPAA-related review', hipaa.disclaimer, ...hipaa.items.map(i => `- ${i.status}: ${i.area}. ${i.note}`)] : [`HIPAA-related review not active: ${hipaa.reason}.`]
+        return finish(io, args, dir, config, 'privacy', 'Privacy report', [result], { hipaa }, extra)
       }
       default:
         io.err(`modspack: unknown command "${args.command}". Run modspack --help.`)
