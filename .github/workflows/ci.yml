@@ -23,7 +23,7 @@ jobs:
       - run: npm ci
       - run: npx tsc -p tsconfig.cli.json
       - run: npm run shared
-      - run: node --test --test-timeout=120000 test/*.test.mjs
+      - run: npm run test:cli
       - run: npm pack --dry-run
 
   # The mods need the Claude Code harness (plugin validate / plugin test).
