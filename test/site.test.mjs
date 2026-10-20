@@ -30,7 +30,7 @@ test('site: every agent, skill and guard in the definitions is on its page, and 
   assert.ok(skills.length >= 12)
   assert.ok(guards.length >= 7)
   const ids = (file, tag = 'h2') => [...read(file).matchAll(new RegExp(`<${tag} id="([^"]+)"`, 'g'))].map(m => m[1]).sort()
-  assert.deepEqual(ids('agents.html'), agents.map(a => a.name).sort())
+  assert.deepEqual([...read('agents.html').matchAll(/<h2 id="([^"]+)"><svg/g)].map(m => m[1]).sort(), agents.map(a => a.name).sort())
   assert.deepEqual(ids('skills.html'), skills.map(s => s.name).sort())
   assert.deepEqual(ids('guards.html'), guards.map(g => g.name).sort())
   assert.match(read('index.html'), new RegExp(`<strong>${agents.length}</strong> agent roles`))
@@ -100,5 +100,28 @@ test('site: the colour tokens meet WCAG AA text contrast in light and dark', () 
     for (const [fg, bg] of [['fg', 'bg'], ['fg', 'card'], ['fg', 'code'], ['muted', 'bg'], ['muted', 'card'], ['accent', 'bg'], ['accent', 'card'], ['ok', 'bg'], ['ok', 'card'], ['warn', 'bg'], ['warn', 'card'], ['bad', 'bg'], ['bad', 'card'], ['bg', 'accent']]) {
       assert.ok(ratio(full[fg], full[bg]) >= 4.5, `${mode}: ${fg} on ${bg} is ${ratio(full[fg], full[bg]).toFixed(2)}:1`)
     }
+  }
+})
+
+test('site: every agent shows its display name, role, ID and the required sections, from the definitions', () => {
+  const agents = lib.loadAgents(lib.DEFINITIONS_ROOT, [])
+  const skills = lib.loadSkills(lib.DEFINITIONS_ROOT, [])
+  const identities = lib.resolveIdentities(agents, lib.loadDefaultIdentities(lib.DEFINITIONS_ROOT))
+  const doc = new JSDOM(read('agents.html')).window.document
+  const cards = [...doc.querySelectorAll('li.agent')]
+  assert.equal(cards.length, 6)
+  for (const a of agents) {
+    const ident = identities.find(i => i.id === a.name)
+    const card = cards.find(c => c.querySelector('h2').id === a.name)
+    assert.ok(card, a.name)
+    assert.equal(card.querySelector('.agent-name').textContent, ident.name)
+    assert.equal(card.querySelector('.role').textContent, ident.role)
+    assert.ok(card.textContent.includes(a.name), 'technical ID shown')
+    assert.deepEqual([...card.querySelectorAll('h3')].map(h => h.textContent), ['Responsibilities', 'When to invoke it', 'Related skills', 'Supported AI platforms and how to invoke', 'Source definition', 'Limitations'])
+    assert.ok(card.querySelectorAll('svg[aria-hidden="true"]').length === 1, 'decorative icon is hidden from assistive technology')
+    const links = [...card.querySelectorAll('.inline a')].map(l => l.getAttribute('href').split('#')[1])
+    assert.ok(links.length >= 1 && links.every(n => skills.some(s => s.name === n)), `${a.name}: related skills exist`)
+    assert.ok(card.querySelector(`a[href$="agents/${a.name}.md"]`), 'source link')
+    assert.equal(card.querySelectorAll('li strong').length >= 4, true, 'all four platforms listed')
   }
 })

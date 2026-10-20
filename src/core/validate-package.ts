@@ -3,6 +3,7 @@
 import { existsSync, readdirSync, readFileSync } from 'node:fs'
 import path from 'node:path'
 
+import { DISPLAY_NAME, loadDefaultIdentities, resolveIdentities } from './identity'
 import { loadAgents, loadSkills, WRITE_TOOLS } from './definitions'
 import type { DefinitionProblem } from './definitions'
 import { schema } from './config'
@@ -60,6 +61,18 @@ export function validatePackage(root: string): DefinitionProblem[] {
     for (const ref of agent.body.matchAll(/`([a-z0-9-]+)` skill/g)) {
       if (!skills.some(s => s.name === ref[1])) problems.push({ file: agent.file, message: `refers to the ${ref[1]} skill, which does not exist` })
     }
+  }
+
+  // Every agent has exactly one default identity; names are unique and valid.
+  const defaults = loadDefaultIdentities(definitions)
+  const identityFile = path.join(definitions, 'identities.json')
+  for (const agent of agents) if (defaults[agent.name] === undefined) problems.push({ file: identityFile, message: `${agent.name} has no default identity` })
+  for (const id of Object.keys(defaults)) if (!agents.some(a => a.name === id)) problems.push({ file: identityFile, message: `${id} is not an agent` })
+  try {
+    resolveIdentities(agents, defaults)
+    for (const [id, d] of Object.entries(defaults)) if (!DISPLAY_NAME.test(d.name) || d.role.trim() === '') problems.push({ file: identityFile, message: `${id} needs a valid display name and a role` })
+  } catch (error) {
+    problems.push({ file: identityFile, message: (error as Error).message })
   }
 
   for (const keyword of unsupportedKeywords(schema)) {

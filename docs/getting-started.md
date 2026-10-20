@@ -4,9 +4,9 @@ ModsPack gives your AI coding tool a shared set of agent roles, skills and guard
 
 ## Terms
 
-- **Agent**: a role definition (for example the code reviewer) with a fixed tool allowance.
-- **Skill**: a reusable procedure in the open Agent Skills format (`SKILL.md`), shared by all four tools.
-- **Guard**: a check on code or output. Some run as hooks while an AI tool works, all run from the CLI.
+- **Agent**: a specialised AI role that performs or evaluates work, such as Sentinel the code reviewer. It has a friendly display name, a stable technical ID and a fixed tool allowance (see [agent names](agent-names.md)).
+- **Skill**: reusable instructions for performing one workflow, in the open Agent Skills format (`SKILL.md`), shared by all four tools.
+- **Mod or guard**: an automated mechanism that evaluates or enforces rules. Some run as hooks while an AI tool works, all run from the CLI.
 - **Hook**: a command the AI tool runs before or after a tool call. Hooks here fail open and are a convenience, not the enforcement point.
 - **CLI check**: a deterministic `modspack` command. It needs no AI model and no network.
 - **Release gate**: a group of required checks (quality, security, privacy, accessibility, package) that `modspack release-check` turns into READY or NOT READY.

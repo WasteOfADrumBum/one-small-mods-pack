@@ -6,7 +6,7 @@ One set of **agents**, **skills** and **guards** for Claude Code, OpenAI Codex, 
 
 | Part | What it is |
 | :-- | :-- |
-| 6 agents | release-manager, code-reviewer, qa-engineer, accessibility-auditor, security-privacy-auditor, release-engineer ([`mods/modspack-agents/agents`](mods/modspack-agents/agents)) |
+| 6 agents | Atlas (`release-manager`), Sentinel (`code-reviewer`), Scout (`qa-engineer`), Echo (`accessibility-auditor`), Aegis (`security-privacy-auditor`), Forge (`release-engineer`); names are customisable, IDs are stable ([agent names](docs/agent-names.md)) ([`mods/modspack-agents/agents`](mods/modspack-agents/agents)) |
 | 12 skills | Agent Skills format, shared by all four tools ([`mods/modspack-agents/skills`](mods/modspack-agents/skills)) |
 | Guards | the four mods below, the new `privacy-guard`, and the CLI's security scan and release gate ([`catalog/guards.json`](catalog/guards.json)) |
 | CLI | `modspack inspect / init / doctor / uninstall / check / security / privacy / accessibility / release-check / hook` ([CLI reference](docs/cli.md)) |

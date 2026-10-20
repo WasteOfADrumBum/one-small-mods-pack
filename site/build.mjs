@@ -30,7 +30,7 @@ function inline(text) {
   return esc(text)
     .replace(/`([^`]+)`/g, '<code>$1</code>')
     .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
-    .replace(/\[([^\]]+)\]\(([^)\s]+)\)/g, (_, label, href) => `<a href="${href.replace(/\.md(#|$)/, '.html$1')}">${label}</a>`)
+    .replace(/\[([^\]]+)\]\(([^)\s]+)\)/g, (_, label, href) => `<a href="${href.replace(/^([a-z-]+)\.md(#|$)/, (_m, name, hash) => `${DOC_NAMES.includes(name) ? 'docs-' : ''}${name}.html${hash}`)}">${label}</a>`)
 }
 function markdown(src, { shift = 0 } = {}) {
   const lines = src.split('\n')
@@ -72,6 +72,7 @@ function markdown(src, { shift = 0 } = {}) {
   }
   return html.join('\n')
 }
+const DOC_NAMES = ['verification', 'agent-names', 'cli', 'configuration', 'ci', 'troubleshooting', 'limitations', 'migration']
 const doc = name => readFileSync(path.join(root, name), 'utf8')
 
 // ---- layout ------------------------------------------------------------------------------------
@@ -81,8 +82,8 @@ const NAV = [
   ['docs.html', 'Documentation'], ['changelog.html', 'Changelog'],
 ]
 const DOCS = [
-  ['cli', 'CLI reference'], ['configuration', 'Configuration'], ['ci', 'Continuous integration'],
-  ['troubleshooting', 'Troubleshooting'], ['limitations', 'Known limitations'], ['migration', 'Migrating from 0.1'],
+  ['agent-names', 'Agent names'], ['cli', 'CLI reference'], ['configuration', 'Configuration'], ['ci', 'Continuous integration'],
+  ['troubleshooting', 'Troubleshooting'], ['limitations', 'Known limitations'], ['verification', 'Verification'], ['migration', 'Migrating from 0.1'],
 ]
 
 function page(file, title, body, { description, filter } = {}) {
@@ -147,19 +148,64 @@ npx one-small-modspack release-check</code></pre>
 <p>The package is not yet published to npm; see Getting started for running it from a clone.</p>
 `)
 
+// Identity (display name and role) comes from mods/modspack-agents/identities.json; everything else is read from the agent definition itself.
+const identities = lib.resolveIdentities(agents, lib.loadDefaultIdentities(lib.DEFINITIONS_ROOT))
+const ICONS = {
+  'release-manager': '<circle cx="12" cy="12" r="9"/><path d="M12 3v18M3 12h18"/>',
+  'code-reviewer': '<path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>',
+  'qa-engineer': '<circle cx="10" cy="10" r="6"/><path d="M15 15l6 6"/>',
+  'accessibility-auditor': '<circle cx="12" cy="4.5" r="2"/><path d="M5 8.5h14M12 8.5v5M12 13.5l-3.5 7M12 13.5l3.5 7"/>',
+  'security-privacy-auditor': '<path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/>',
+  'release-engineer': '<path d="M4 20l9-9M13 5l6 6M11 7l6-4 4 4-4 6z"/>',
+}
+const icon = id => `<svg class="icon" viewBox="0 0 24 24" width="32" height="32" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">${ICONS[id]}</svg>`
+const REPO_SOURCE = 'https://github.com/WasteOfADrumBum/one-small-mods-pack/blob/main/mods/modspack-agents'
+const INVOKE = {
+  'claude-code': id => `Ask Claude Code to use the <code>${id}</code> agent, or pick it from <code>/agents</code>.`,
+  codex: id => `Ask Codex to use the <code>${id}</code> custom agent.`,
+  copilot: id => `<code>copilot --agent ${id}</code>, or choose it with <code>/agent</code>.`,
+  gemini: id => `Mention <code>@${id}</code> in your prompt.`,
+}
 const agentCards = agents.map(a => {
+  const ident = identities.find(i => i.id === a.name)
   const readOnly = !a.tools.some(t => lib.WRITE_TOOLS.has(t))
-  return `<li class="card" data-search="${esc((a.name + ' ' + a.description).toLowerCase())}">
-<h2 id="${a.name}">${esc(a.name)}</h2>
+  const related = skills.filter(sk => sk.metadata['modspack-agent'] === a.name || new RegExp(`\\x60${sk.name}\\x60 skill`).test(a.body)).map(sk => sk.name)
+  const platforms = Object.keys(compatibility.platforms)
+  const search = [ident.name, a.name, ident.role, a.description, ...related].join(' ').toLowerCase()
+  return `<li class="card agent" data-search="${esc(search)}">
+<h2 id="${a.name}">${icon(a.name)}<span class="agent-name">${esc(ident.name)}</span> <span class="role">${esc(ident.role)}</span></h2>
 <p>${esc(a.description)}</p>
-<p><span class="tag">${readOnly ? 'Read-only' : 'Can edit files'}</span> Tools: ${a.tools.map(t => `<code>${esc(t)}</code>`).join(' ')}</p>
-<details><summary>When to invoke and what it produces</summary>${markdown(lib.sectionText(a, 'When to invoke') + '\n\n' + lib.sectionText(a, 'Output'))}</details>
+<dl>
+<dt>Technical ID</dt><dd><code>${esc(a.name)}</code> <span class="note">(the same ID in every platform's files; the display name is only a label)</span></dd>
+<dt>Access</dt><dd><span class="tag">${readOnly ? 'Read-only' : 'Can edit files'}</span> Tools: ${a.tools.map(t => `<code>${esc(t)}</code>`).join(' ')}</dd>
+</dl>
+<h3>Responsibilities</h3>
+${markdown(lib.sectionText(a, 'Responsibilities'))}
+<h3>When to invoke it</h3>
+${markdown(lib.sectionText(a, 'When to invoke'))}
+<h3>Related skills</h3>
+<ul class="inline">${related.map(n => `<li><a href="${base}skills.html#${n}">${esc(n)}</a></li>`).join('')}</ul>
+<h3>Supported AI platforms and how to invoke</h3>
+<ul>${platforms.map(p => `<li><strong>${esc(compatibility.platforms[p].label)}</strong> (<span class="status status-${esc(compatibility.matrix['custom-agents'][p].status)}">${esc(compatibility.matrix['custom-agents'][p].status)}</span>, ${esc(compatibility.matrix['custom-agents'][p].verified)} check): ${INVOKE[p](esc(a.name))}</li>`).join('')}</ul>
+<p class="note">Platforms know the agent by its technical ID. You can still say "${esc(ident.name)}": the ModsPack block in your instruction file maps the display name to the ID.</p>
+<h3>Source definition</h3>
+<p><a href="${REPO_SOURCE}/agents/${esc(a.name)}.md"><code>mods/modspack-agents/agents/${esc(a.name)}.md</code></a></p>
+<h3>Limitations</h3>
+${markdown(lib.sectionText(a, 'Limitations'))}
 </li>`
 }).join('\n')
 pages['agents.html'] = page('agents.html', 'Agents', `<h1>Agents</h1>
-<p>Six roles. Read-only roles cannot edit files, and a test enforces that.</p>
-${filterBox('Search agents', agents.length)}
-<ul class="cards" id="results">${agentCards}</ul>`, { description: 'The six agent roles.', filter: true })
+<p>Six specialist roles, each with a friendly name and a stable technical ID. Read-only roles cannot edit files, and a test enforces that.</p>
+<h2 id="terms">Agent, skill, guard</h2>
+<ul>
+<li><strong>Agent</strong>: a specialised AI role that performs or evaluates work.</li>
+<li><strong>Skill</strong>: reusable instructions for one workflow, in the open Agent Skills format.</li>
+<li><strong>Mod or guard</strong>: an automated mechanism that evaluates or enforces rules.</li>
+</ul>
+<p>Display names are customisable per project with <code>agentNames</code> in <code>modspack.config.json</code>. The technical IDs, instructions, tools and files never change. See <a href="${base}docs-agent-names.html">Agent names</a>.</p>
+<h2 id="catalog">The six agents</h2>
+${filterBox('Search agents by name, role or skill', agents.length)}
+<ul class="cards single" id="results">${agentCards}</ul>`, { description: 'The six agents: friendly names, roles and stable technical IDs.', filter: true })
 
 const skillCards = skills.map(s => `<li class="card" data-search="${esc((s.name + ' ' + s.description).toLowerCase())}">
 <h2 id="${s.name}">${esc(s.name)}</h2>
@@ -262,6 +308,13 @@ pre code{padding:0}
 .cards{list-style:none;padding:0;display:grid;gap:1rem;grid-template-columns:repeat(auto-fill,minmax(min(100%,22rem),1fr))}
 .card{background:var(--card);border:1px solid var(--border);border-radius:.5rem;padding:1rem}
 .card h2{margin-top:0;font-size:1.2rem}
+.card h3{font-size:1rem;margin:1rem 0 .25rem}
+.agent h2{display:flex;flex-wrap:wrap;align-items:center;gap:.25rem .6rem}
+.agent .icon{color:var(--accent);flex:none}
+.agent-name{text-transform:uppercase;letter-spacing:.08em;font-size:1.35rem}
+.role{font-weight:400;color:var(--muted);font-size:1rem}
+.inline{list-style:none;display:flex;flex-wrap:wrap;gap:.25rem 1rem;padding:0;margin:0}
+.cards.single{grid-template-columns:1fr}
 .tag{display:inline-block;border:1px solid var(--border);border-radius:1rem;padding:0 .6rem;font-size:.85rem;margin-right:.25rem}
 dt{font-weight:700;margin-top:.5rem}
 dd{margin:0}

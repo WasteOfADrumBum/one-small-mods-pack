@@ -80,7 +80,73 @@ for (const scheme of ['light', 'dark']) {
   if ((await p2.locator('#results > li:visible').count()) !== total) failures.push('no-JS: entries are hidden')
   if (await p2.locator('[data-filter-ui]').isVisible()) failures.push('no-JS: a search box is shown that cannot work')
 }
+// 200% and 400% zoom: a 1280px window at 200% is a 640px layout viewport, at 400% 320px.
+for (const [zoom, width] of [['200%', 640], ['400%', 320]]) {
+  const context = await browser.newContext({ viewport: { width, height: 800 } })
+  const page = await context.newPage()
+  for (const f of pages) {
+    await page.goto(`${url}/${f}`)
+    if (await page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth)) failures.push(`${zoom} zoom ${f}: horizontal scroll`)
+    // Content must not be clipped: every heading is inside the viewport width.
+    const clipped = await page.evaluate(() => [...document.querySelectorAll('h1,h2,h3,nav a,button,input')].filter(e => e.getBoundingClientRect().right > document.documentElement.clientWidth + 1).length)
+    if (clipped > 0) failures.push(`${zoom} zoom ${f}: ${clipped} elements extend past the viewport`)
+  }
+  await context.close()
+}
+// Keyboard: every Tab stop is visible, has a visible focus indicator, and has an accessible name; the order follows the page.
+{
+  const page = await browser.newPage({ viewport: { width: 1280, height: 900 } })
+  for (const f of pages) {
+    await page.goto(`${url}/${f}`)
+    const expected = await page.evaluate(() => [...document.querySelectorAll('a[href],input,summary,[tabindex="0"]')].filter(e => e.offsetParent !== null || e.tagName === 'SUMMARY').length)
+    let stops = 0, lastTop = -1
+    for (let i = 0; i < expected + 5; i++) {
+      await page.keyboard.press('Tab')
+      const info = await page.evaluate(() => {
+        const e = document.activeElement
+        if (!e || e === document.body) return null
+        const cs = getComputedStyle(e)
+        const r = e.getBoundingClientRect()
+        return { tag: e.tagName, outline: cs.outlineStyle !== 'none' && parseFloat(cs.outlineWidth) >= 2, name: (e.getAttribute('aria-label') || e.textContent || e.getAttribute('id') || '').trim().length > 0 || e.tagName === 'INPUT', visible: r.width > 0 && r.height > 0 }
+      })
+      if (info === null) break
+      stops++
+      if (!info.outline) failures.push(`keyboard ${f}: a ${info.tag} stop has no 2px focus outline`)
+      if (!info.name) failures.push(`keyboard ${f}: a ${info.tag} stop has no accessible name`)
+      if (!info.visible) failures.push(`keyboard ${f}: a focused ${info.tag} is not visible`)
+    }
+    if (stops < expected) failures.push(`keyboard ${f}: reached ${stops} of ${expected} focusable elements`)
+  }
+}
+// Search interactions on the agents page: by display name, by technical ID, by skill, by role; the live region reports the count.
+{
+  const page = await browser.newPage()
+  await page.goto(`${url}/agents.html`)
+  const shown = async q => { await page.fill('#q', q); return page.locator('#results > li:not([hidden])').count() }
+  for (const [q, n] of [['echo', 1], ['ATLAS', 1], ['release-manager', 1], ['code review', 1], ['accessibility', 1], ['release', 3], ['zzz', 0]]) {
+    const got = await shown(q)
+    if (got < 1 && n > 0 || (n === 0 && got !== 0) || (q === 'release' && got < 2)) failures.push(`agents search "${q}": ${got} shown, expected about ${n}`)
+  }
+  await page.fill('#q', 'echo')
+  if (!/1 shown/.test(await page.textContent('#count'))) failures.push('agents search: the live count is not updated')
+  if ((await page.getAttribute('#count', 'aria-live')) !== 'polite' || (await page.getAttribute('#count', 'role')) !== 'status') failures.push('agents search: count is not a polite status region')
+  // Accessible names and roles as Chromium exposes them (an accessibility-tree check, not a screen reader run).
+  await page.fill('#q', '')
+  const tree = await page.locator('main').ariaSnapshot()
+  for (const expect of ['heading "Atlas Release Manager"', 'heading "Echo Accessibility Auditor"', 'searchbox "Search agents by name, role or skill"']) {
+    if (!tree.includes(expect)) failures.push(`accessibility tree: missing ${expect}`)
+  }
+  if (/svg|img/.test(tree.split('\n').filter(l => /Atlas/.test(l)).join(''))) failures.push('accessibility tree: the decorative icon is exposed')
+}
+// Reduced motion: no transitions.
+{
+  const context = await browser.newContext({ reducedMotion: 'reduce' })
+  const page = await context.newPage()
+  await page.goto(`${url}/index.html`)
+  const d = await page.evaluate(() => getComputedStyle(document.querySelector('a.button')).transitionDuration)
+  if (d !== '0s') failures.push(`reduced motion: transition-duration is ${d}`)
+}
 await browser.close()
 server.close()
 if (failures.length > 0) { console.log(`FAIL\n${failures.map(f => `- ${f}`).join('\n')}`); process.exit(1) }
-console.log(`PASS: ${pages.length} pages in light and dark (axe incl. contrast), 320px width, filter, skip link, no-JS`)
+console.log(`PASS: ${pages.length} pages: axe incl. contrast in light and dark, 200% and 400% zoom, keyboard focus order and indicators, search, accessibility tree names, reduced motion, no-JS`)

@@ -14,6 +14,7 @@ import { ConfigError, loadConfig, PLATFORMS } from './core/config'
 import type { ModspackConfig, Platform } from './core/config'
 import { loadAgents, loadSkills } from './core/definitions'
 import type { DefinitionProblem } from './core/definitions'
+import { loadDefaultIdentities, resolveIdentities } from './core/identity'
 import { DEFINITIONS_ROOT, PACKAGE_ROOT } from './core/paths'
 import { renderMarkdown, renderText, writeReports } from './core/render'
 import { EXIT, exitCode } from './core/report'
@@ -115,7 +116,7 @@ function finish(io: Io, args: Args, dir: string, config: ModspackConfig, name: s
   return code
 }
 
-function definitions(args: Args) {
+function definitions(args: Args, dir: string) {
   const problems: DefinitionProblem[] = []
   const skillFilter = args.lists.skill
   const agentFilter = args.lists.agent
@@ -125,7 +126,10 @@ function definitions(args: Args) {
     for (const name of filter ?? []) if (!all.some(d => d.name === name)) throw new UsageError(`unknown ${what} "${name}". Available: ${all.map(d => d.name).join(', ')}`)
   }
   if (problems.length > 0) throw new Error(`shipped definitions are invalid: ${problems[0]!.message}`)
-  return { skills: allSkills.filter(s => skillFilter === undefined || skillFilter.includes(s.name)), agents: allAgents.filter(a => agentFilter === undefined || agentFilter.includes(a.name)) }
+  // Names are resolved against every agent, so a rename never depends on which agents are installed.
+  const identities = resolveIdentities(allAgents, loadDefaultIdentities(DEFINITIONS_ROOT), loadConfig(dir).config.agentNames)
+  const agents = allAgents.filter(a => agentFilter === undefined || agentFilter.includes(a.name))
+  return { skills: allSkills.filter(s => skillFilter === undefined || skillFilter.includes(s.name)), agents, identities: identities.filter(i => agents.some(a => a.name === i.id)) }
 }
 
 function choosePlatforms(args: Args, dir: string, fallback: readonly Platform[]): { platforms: Platform[]; note: string } {
@@ -170,9 +174,9 @@ export async function main(argv: readonly string[], io: Io = { out: t => process
       }
       case 'agents':
       case 'skills': {
-        const { agents, skills } = definitions(args)
-        const rows = args.command === 'agents' ? agents.map(a => ({ name: a.name, description: a.description, tools: a.tools })) : skills.map(s => ({ name: s.name, description: s.description, category: s.metadata['modspack-category'], agent: s.metadata['modspack-agent'] }))
-        io.out(args.flags.json ? JSON.stringify(rows, null, 2) : rows.map(r => `${r.name}\n  ${r.description}`).join('\n'))
+        const { agents, skills, identities } = definitions(args, dir)
+        const rows = args.command === 'agents' ? agents.map(a => { const i = identities.find(x => x.id === a.name)!; return { id: a.name, displayName: i.name, role: i.role, description: a.description, tools: a.tools } }) : skills.map(s => ({ name: s.name, description: s.description, category: s.metadata['modspack-category'], agent: s.metadata['modspack-agent'] }))
+        io.out(args.flags.json ? JSON.stringify(rows, null, 2) : rows.map(r => ('id' in r ? `${r.displayName} (${r.id}), ${r.role}\n  ${r.description}` : `${r.name}\n  ${r.description}`)).join('\n'))
         return EXIT.ok
       }
       case 'inspect': {
@@ -207,13 +211,14 @@ export async function main(argv: readonly string[], io: Io = { out: t => process
           `Required gates: ${result.required.join(', ')}`,
           ...(result.steps.length > 0 ? ['Minimum steps to READY:', ...result.steps.map((s, i) => `  ${i + 1}. ${s}`)] : []),
           ...(result.needsHumanReview.length > 0 ? ['Not verified by this tool (needs a person):', ...result.needsHumanReview.map(r => `  - ${r}`)] : []),
+          'Scope: the automated gate result for this project only. It does not certify manual checks, organisational safeguards, compliance, or that any tool you use has been release-verified.',
           `VERDICT: ${result.verdict}`,
         ]
         const mode = args.flags.advisory ? 'advisory' : config.mode
         const blocked = result.reasons.some(r => r.status !== 'FAIL')
         const failed = result.reasons.some(r => r.status === 'FAIL')
         const code = result.verdict === 'READY' ? EXIT.ok : failed && mode === 'enforce' ? EXIT.failed : blocked ? EXIT.blocked : EXIT.ok
-        const payload = { tool: 'modspack', version: VERSION, command: 'release-check', mode, exitCode: code, verdict: result.verdict, required: result.required, reasons: result.reasons, steps: result.steps, needsHumanReview: result.needsHumanReview, gates: result.gates }
+        const payload = { tool: 'modspack', version: VERSION, command: 'release-check', mode, exitCode: code, verdict: result.verdict, scope: 'automated project gate; not a certification of manual checks, organisational safeguards or compliance', required: result.required, reasons: result.reasons, steps: result.steps, needsHumanReview: result.needsHumanReview, gates: result.gates }
         if (args.flags.json) io.out(JSON.stringify(payload, null, 2))
         else io.out(renderText(result.gates) + '\n\n' + extra.join('\n'))
         if (args.flags.write) {
@@ -223,9 +228,9 @@ export async function main(argv: readonly string[], io: Io = { out: t => process
         return code
       }
       case 'init': {
-        const { agents, skills } = definitions(args)
+        const { agents, skills, identities } = definitions(args, dir)
         const { platforms, note } = choosePlatforms(args, dir, PLATFORMS)
-        const outputs = renderAll({ platforms, agents, skills, ci: Boolean(args.flags.ci), standalone: Boolean(args.flags.standalone) })
+        const outputs = renderAll({ platforms, agents, skills, identities, ci: Boolean(args.flags.ci), standalone: Boolean(args.flags.standalone) })
         const manifest = readManifest(dir)
         const actions = plan(dir, outputs, manifest)
         const summary = (['create', 'update', 'adopt', 'unchanged', 'keep-edited', 'conflict'] as const).map(op => `${actions.filter(a => a.op === op).length} ${op}`).join(', ')

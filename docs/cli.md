@@ -13,10 +13,12 @@ Run `modspack --help` for the same list. Every check command accepts `--json`, `
 | `privacy` | Personal and health data. Adds a HIPAA-related review when health data appears. |
 | `accessibility` | Contrast, axe-core and jsx-a11y; lists the manual checks still needed. |
 | `release-check` | Runs every required gate and prints READY or NOT READY. |
-| `agents` | Lists the agent roles. |
+| `agents` | Lists the agents: display name, technical ID and role. |
 | `skills` | Lists the skills. |
 | `validate` | Validates the shipped definitions, schema and catalogs. |
 | `hook <platform>` | Pre-write guard for `codex`, `copilot` or `gemini`; reads the tool call on stdin. |
+
+`release-check` is the automated gate for the project it runs in. It is not certification that ModsPack itself is release-verified; see [verification](verification.md).
 
 ## Status words
 

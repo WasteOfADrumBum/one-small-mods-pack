@@ -8,17 +8,17 @@
     },
     "codex": {
       "label": "OpenAI Codex",
-      "version": "not installed in the test environment",
+      "version": "0.163.0 (runtime checks without a model or login)",
       "docs": ["https://developers.openai.com/codex/skills", "https://developers.openai.com/codex/subagents", "https://developers.openai.com/codex/hooks"]
     },
     "copilot": {
       "label": "GitHub Copilot",
-      "version": "not installed in the test environment",
+      "version": "1.0.100 (runtime checks without a model or login)",
       "docs": ["https://docs.github.com/en/copilot/reference/hooks-reference", "https://docs.github.com/en/copilot/how-tos/use-copilot-agents/coding-agent/create-custom-agents"]
     },
     "gemini": {
       "label": "Gemini CLI",
-      "version": "not installed in the test environment",
+      "version": "0.64.0 (runtime checks without a model or login)",
       "docs": ["https://geminicli.com/docs/cli/creating-skills/", "https://geminicli.com/docs/hooks/", "https://developers.googleblog.com/en/subagents-have-arrived-in-gemini-cli/"]
     }
   },
@@ -39,15 +39,15 @@
   "matrix": {
     "repository-instructions": {
       "claude-code": { "status": "partial", "verified": "static", "note": "CLAUDE.md block is written and read back by tests; Claude Code reading it was not exercised live." },
-      "codex": { "status": "partial", "verified": "static", "note": "AGENTS.md block; documented by OpenAI, not runtime-tested here." },
+      "codex": { "status": "supported", "verified": "runtime", "note": "Codex 0.163.0: `codex debug prompt-input` shows the ModsPack block from AGENTS.md inside the model-visible instructions. Whether the model follows it was not tested." },
       "copilot": { "status": "partial", "verified": "static", "note": "AGENTS.md block (Copilot reads AGENTS.md and .github/copilot-instructions.md); not runtime-tested." },
       "gemini": { "status": "partial", "verified": "static", "note": "GEMINI.md block; not runtime-tested." }
     },
     "skill-discovery": {
       "claude-code": { "status": "partial", "verified": "static", "note": "Skills ship in the modspack-agents plugin; claude plugin validate passes. Live discovery not exercised (mods rollout flag off in the test container)." },
-      "codex": { "status": "partial", "verified": "static", "note": ".agents/skills/<name>/SKILL.md per the Agent Skills spec, validated by tests; not runtime-tested." },
-      "copilot": { "status": "partial", "verified": "static", "note": ".agents/skills (Copilot also reads .github/skills and .claude/skills); not runtime-tested." },
-      "gemini": { "status": "partial", "verified": "static", "note": ".agents/skills alias of .gemini/skills; activation asks the user first; not runtime-tested." }
+      "codex": { "status": "supported", "verified": "runtime", "note": "Codex 0.163.0: `codex debug prompt-input` in a project set up by `modspack init` lists all 12 skills from .agents/skills in the model-visible input. Skill use by a model was not tested (no login)." },
+      "copilot": { "status": "supported", "verified": "runtime", "note": "Copilot CLI 1.0.100: `copilot skill list` shows all 12 project skills from .agents/skills. Use by a model was not tested (no login)." },
+      "gemini": { "status": "supported", "verified": "runtime", "note": "Gemini CLI 0.64.0: `gemini skills list` in a trusted project lists all 12 skills from .agents/skills as Enabled. Activation by a model was not tested (no login)." }
     },
     "skill-invocation": {
       "claude-code": { "status": "partial", "verified": "static", "note": "/modspack-agents:<skill> or by description; not exercised live." },

@@ -7,6 +7,7 @@
 - Six agent roles and twelve shared Agent Skills.
 - `privacy-guard` mod: personal and health data detection and a HIPAA-related review that never claims compliance.
 - Adapters for Claude Code, OpenAI Codex, GitHub Copilot and Gemini CLI with a reversible installer.
+- Friendly agent names (Atlas, Sentinel, Scout, Echo, Aegis, Forge) as metadata, customisable with `agentNames`; technical IDs and native agent files unchanged.
 - Public documentation website generated from the definitions and catalogs.
 - CI workflow for this repository.
 

@@ -26,6 +26,11 @@
       "type": "array",
       "items": { "type": "string" }
     },
+    "agentNames": {
+      "description": "Display names for agents, by technical ID, for example {\"release-manager\": \"Atlas\"}. Only the display name changes; the ID, instructions, tools and files do not. Names are unique, start with a letter, and use letters, digits, spaces and hyphens (at most 32 characters).",
+      "type": "object",
+      "additionalProperties": { "type": "string" }
+    },
     "exclude": {
       "description": "Globs no scan reads (added to the built-in node_modules, .git, dist, build, coverage).",
       "type": "array",

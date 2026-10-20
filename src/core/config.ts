@@ -22,6 +22,7 @@ export type ModspackConfig = {
   adapters?: Platform[]
   skills?: string[]
   agents?: string[]
+  agentNames: Record<string, string>
   exclude: string[]
   guards: Record<'quality' | 'security' | 'privacy' | 'accessibility' | 'design', boolean>
   security: { failOn: Exclude<Severity, 'info'>; history: { enabled: boolean; maxCommits: number }; dependencyAudit: boolean; externalScanners: boolean; accepted: Accepted[] }
@@ -47,6 +48,7 @@ export function resolveConfig(raw: Raw): ModspackConfig {
     adapters: raw.adapters,
     skills: raw.skills,
     agents: raw.agents,
+    agentNames: raw.agentNames ?? {},
     exclude: raw.exclude ?? [],
     guards: { quality: true, security: true, privacy: true, accessibility: true, design: true, ...raw.guards },
     security: {

@@ -35,6 +35,7 @@
     "mods/*/scripts",
     "mods/*/config.example.json",
     "mods/modspack-agents/agents",
+    "mods/modspack-agents/identities.json",
     "mods/modspack-agents/skills",
     "catalog",
     "schema",
