@@ -68,12 +68,15 @@ const str = (data: Frontmatter, key: string): string | undefined => {
   return typeof value === 'string' ? value : undefined
 }
 
+/** A relative path with `/` separators, as skills link to their files, whatever the platform's separator. */
+export const toPosix = (rel: string, sep: string = path.sep): string => (sep === '/' ? rel : rel.split(sep).join('/'))
+
 function listFiles(dir: string, base = dir): string[] {
   const out: string[] = []
   for (const entry of readdirSync(dir, { withFileTypes: true })) {
     const full = path.join(dir, entry.name)
     if (entry.isDirectory()) out.push(...listFiles(full, base))
-    else out.push(path.relative(base, full))
+    else out.push(toPosix(path.relative(base, full)))
   }
   return out.sort()
 }

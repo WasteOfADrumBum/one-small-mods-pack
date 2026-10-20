@@ -6,7 +6,7 @@ import path from 'node:path'
 
 import {
   splitFrontmatter, FrontmatterError, validate, schema, resolveConfig, loadConfig, ConfigError,
-  loadSkills, loadAgents, validatePackage, gateStatus, exitCode, mask, unsupportedKeywords,
+  loadSkills, loadAgents, validatePackage, gateStatus, exitCode, mask, unsupportedKeywords, toPosix, DEFINITIONS_ROOT,
 } from '../dist/lib.mjs'
 import { ROOT, project, cli } from './helpers.mjs'
 
@@ -135,4 +135,14 @@ test('cli: version, help, unknown commands and bad flags', async () => {
   assert.equal((await cli(['inspect', '--dir'], ROOT)).code, 2)
   const valid = await cli(['validate'], ROOT)
   assert.equal(valid.code, 0, valid.out)
+})
+
+test('definitions: skill resource paths use "/" whatever the platform separator is (Windows reported links to references/... as missing)', () => {
+  assert.equal(toPosix('references\\checklist.md', '\\'), 'references/checklist.md')
+  assert.equal(toPosix('assets\\a\\b.md', '\\'), 'assets/a/b.md')
+  assert.equal(toPosix('references/checklist.md', '/'), 'references/checklist.md')
+  // The shipped skills' own resources, as listed on this platform, are all "/"-separated.
+  const skills = loadSkills(DEFINITIONS_ROOT, [])
+  assert.ok(skills.some(s => s.resources.some(r => r.includes('/'))))
+  assert.ok(skills.every(s => s.resources.every(r => !r.includes('\\'))))
 })

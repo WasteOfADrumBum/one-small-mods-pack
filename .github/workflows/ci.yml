@@ -55,6 +55,7 @@ jobs:
       - run: node --test --test-timeout=120000 test/link-types.test.mjs
       - run: node dist/modspack.mjs validate
       - run: node dist/modspack.mjs agents
+      - run: node --test --test-timeout=180000 test/*.test.mjs
       - name: link-types locates the repository (no declarations exist here, so it exits 1 with its own message and never ENOENT)
         shell: pwsh
         run: |
