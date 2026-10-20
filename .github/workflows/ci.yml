@@ -40,3 +40,25 @@ jobs:
       - run: npm install --global @anthropic-ai/claude-code@2.1.304
       - run: npm run validate
       - run: npm test
+
+  # Native Windows: the repository scripts and the shipped CLI must find their own files.
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+      - run: node --test --test-timeout=120000 test/link-types.test.mjs
+      - run: node dist/modspack.mjs validate
+      - run: node dist/modspack.mjs agents
+      - name: link-types locates the repository (no declarations exist here, so it exits 1 with its own message and never ENOENT)
+        shell: pwsh
+        run: |
+          $out = (node scripts/link-types.mjs 2>&1 | Out-String)
+          Write-Host $out
+          if ($out -match 'ENOENT') { exit 1 }
+          if ($out -notmatch 'No Claude Code type declarations found') { exit 1 }

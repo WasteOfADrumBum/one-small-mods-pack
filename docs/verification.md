@@ -23,10 +23,12 @@ These show discovery. Not covered: custom agent loading, a hook firing, a model 
 
 ## Check the rest on your machine
 
-**Mod typecheck (BLOCKED where mod loading is switched off).** In a Claude Code build where mods load:
+**Mod typecheck.** Claude Code writes its type declarations itself; there is no download. Two ways to get them, then check:
 
-1. `claude --plugin-dir mods/qa-gate` and wait for the mod to load; Claude Code writes its type declarations beside it.
-2. `npm run types` then `npm run typecheck`. Fix real errors; do not add stub types.
+1. Ask Claude Code to use its bundled `plugin-authoring` skill. The skill text names the `claude-code.d.ts` it just wrote for your Claude Code version. Run `node scripts/link-types.mjs <that path>` (quote the path in PowerShell).
+2. Or start `claude --plugin-dir mods/qa-gate` where mods are enabled; once the mod loads, the declarations are in `mods/qa-gate/.claude-plugin/types/claude-code/index.d.ts`, and `npm run types` finds them without an argument.
+
+Then `npm run typecheck`. Fix real errors; never add stub declarations or suppress errors. On 2026-10-20 this passed with 0 errors against the file Claude Code 2.1.304 wrote through route 1 (Linux).
 
 **Windows.** `npm run types`, `npm run build` and the test scripts run in PowerShell. `npm run validate` and `npm test` loop over the mods with POSIX shell syntax, so on Windows run them from Git Bash or WSL, or run `claude plugin validate` and `claude plugin test` per mod folder. All of these need the `claude` command on your PATH and signed in; without it the mod typecheck and live hook checks stay BLOCKED.
 

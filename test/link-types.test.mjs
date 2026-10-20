@@ -28,6 +28,28 @@ test('root: Windows drive-letter, spaced, encoded and UNC locations resolve to t
   for (const url of ['file:///C:/Users/me/repo/scripts/link-types.mjs', 'file:///D:/x y/repo/scripts/a.mjs']) assert.ok(!/^[a-z]:\\[a-z]:/i.test(win(url)), url)
 })
 
+test('root: with no option the rules of the running platform apply (the native-Windows failure was an explicit windows:false)', () => {
+  // A real file URL for a real file on this machine: drive-lettered on Windows, rooted on POSIX.
+  const here = pathToFileURL(path.join(ROOT, 'scripts', 'link-types.mjs')).href
+  const native = projectRoot(here)
+  assert.equal(native, projectRoot(here, { windows: process.platform === 'win32' }))
+  assert.equal(native, ROOT)
+  assert.ok(existsSync(path.join(native, 'package.json')) && existsSync(path.join(native, 'mods')), `${native} is not the repository root`)
+  assert.ok(!/^[a-z]:[\\/]+[a-z]:/i.test(native), `doubled drive in ${native}`)
+  assert.ok(existsSync(path.join(projectRoot(import.meta.url), 'scripts', 'root.mjs')))
+  // The same logic as every script uses, from each script's own location.
+  for (const f of ['scripts/link-types.mjs', 'scripts/build.mjs', 'scripts/check-shared.mjs', 'site/build.mjs', 'test/helpers.mjs']) {
+    assert.equal(projectRoot(pathToFileURL(path.join(ROOT, f)).href), ROOT, f)
+  }
+})
+
+test('root: forcing POSIX rules on a drive-letter URL is what produced C:\\C:', { skip: !windowsRulesAvailable && 'this Node version cannot evaluate the Windows rules' }, () => {
+  const url = 'file:///C:/Users/me/repo/scripts/link-types.mjs'
+  assert.equal(fileURLToPath(url, { windows: false }), '/C:/Users/me/repo/scripts/link-types.mjs')
+  assert.equal(fileURLToPath(url, { windows: true }), 'C:\\Users\\me\\repo\\scripts\\link-types.mjs')
+  assert.equal(projectRoot(url, { windows: true }), 'C:\\Users\\me\\repo')
+})
+
 test('root: POSIX locations, spaces and encoded characters resolve as before', () => {
   assert.equal(projectRoot('file:///home/me/one-small-mods-pack/scripts/link-types.mjs'), path.resolve('/home/me/one-small-mods-pack'))
   assert.equal(projectRoot('file:///home/me/My%20Repos/a%23b/scripts/build.mjs'), path.resolve('/home/me/My Repos/a#b'))
