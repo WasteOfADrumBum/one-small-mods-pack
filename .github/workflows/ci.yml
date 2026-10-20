@@ -65,3 +65,11 @@ jobs:
           if ($out -notmatch 'No Claude Code type declarations found') { exit 1 }
           # The script's own exit 1 is the expected result here; do not let it fail the step.
           exit 0
+      - name: npm run validate parses in Windows' npm shell (Claude Code is not installed here, so it must report BLOCKED, exit 3)
+        shell: pwsh
+        run: |
+          $out = (npm run validate 2>&1 | Out-String)
+          Write-Host $out
+          if ($out -match 'unexpected at this time') { exit 1 }
+          if ($out -notmatch 'BLOCKED') { exit 1 }
+          exit 0

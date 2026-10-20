@@ -181,7 +181,7 @@ Where it scrubs: every tool result before it's stored (in the main conversation 
 ```bash
 npm run types       # copy your Claude Code build's type declarations into types/ (see below)
 npm run typecheck   # tsc against them
-npm run validate    # claude plugin validate on the marketplace and each mod
+npm run validate    # claude plugin validate on the marketplace and each mod (scripts/run-mods.mjs)
 npm test            # claude plugin test in each mod
 ```
 
