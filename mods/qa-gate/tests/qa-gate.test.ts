@@ -68,7 +68,9 @@ type Extra = {
 function stubEngine(on: On, files: Record<string, string>, exitCodes: Record<string, number> = {}, extra: Extra = {}) {
   const runs: { argv: string[]; cwd?: string; env?: Record<string, string> }[] = []
   const toasts: string[] = []
-  const find = (path: string) => Object.entries(files).find(([end]) => path.endsWith(end))?.[1]
+  // Paths compare with "/" whatever separator the engine hands over: on Windows it hands backslashes.
+  const slash = (p: string) => p.replace(/\\/g, '/')
+  const find = (path: string) => Object.entries(files).find(([end]) => slash(path).endsWith(slash(end)))?.[1]
   on('fs.exists', ($, e) => ({ value: find(e.path) !== undefined }))
   on('fs.read', ($, e) => ({ value: find(e.path) ?? '' }))
   on('fs.stat', () => ({ value: { kind: 'file' as const, size: 1, mtimeMs: extra.mtime?.() ?? 0, isLink: false } }))

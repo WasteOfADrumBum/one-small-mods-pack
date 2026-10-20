@@ -12,6 +12,7 @@
 - CI workflow for this repository.
 
 ### Fixed
+- Windows: two design-guardrail tests failed under the real Claude Code 2.1.304 harness because their file stubs matched paths by a `/` suffix while the Windows engine reports backslashes. The hooks were correct. The stubs in design-guardrail, privacy-guard, qa-gate and wcag-enforcer now compare separator-insensitively, and design-guardrail has tests that deliver backslash paths.
 - Windows: `npm run validate` and `npm test` used POSIX `for` loops that Windows' npm shell cannot parse (`mod was unexpected at this time.`). They now run `scripts/run-mods.mjs`, a cross-platform Node runner with argument arrays, the same scope, fail-fast behaviour and exit status, and tests for scope, ordering, error propagation and paths with spaces.
 - Mod typecheck against the real Claude Code declarations: tool arguments are `unknown`, so design-guardrail, privacy-guard, qa-gate, secret-scrubber and wcag-enforcer narrow them with `asString` before use (25 errors to 0). A missing or non-string field never throws; behaviour for each is in `docs/verification.md`, with `malformed tool arguments` tests in every mod.
 - Windows: two CLI tests assumed the working tree is LF. They now compare through `readLf` and check the git index, with a new test that rendering from a CRLF checkout is byte-identical. No product code changed for this.

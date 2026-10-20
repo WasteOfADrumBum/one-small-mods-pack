@@ -91,14 +91,19 @@ type Extra = {
   toolCall?: () => { result: string }
   process?: (argv: readonly string[]) => string
   mtime?: () => number
+  /** Hand file paths to the stubs with backslashes, as the engine does on Windows. */
+  windowsPaths?: boolean
 }
 
 /** Stubs the project's files, git, the tool and the display calls; `files` maps a path ending to its text. */
 function stubEngine(on: On, files: Record<string, string>, extra: Extra = {}) {
-  const find = (path: string) => Object.entries(files).find(([end]) => path.endsWith(end))?.[1]
+  // Paths compare with "/" whatever separator the engine hands over: on Windows it hands backslashes.
+  const slash = (p: string) => p.replace(/\\/g, '/')
+  const find = (path: string) => Object.entries(files).find(([end]) => slash(path).endsWith(slash(end)))?.[1]
+  const seen = (path: string) => (extra.windowsPaths === true ? path.replace(/\//g, '\\') : path)
   const toasts: string[] = []
-  on('fs.exists', ($, e) => ({ value: find(e.path) !== undefined }))
-  on('fs.read', ($, e) => ({ value: find(e.path) ?? '' }))
+  on('fs.exists', ($, e) => ({ value: find(seen(e.path)) !== undefined }))
+  on('fs.read', ($, e) => ({ value: find(seen(e.path)) ?? '' }))
   on('fs.stat', () => ({ value: { kind: 'file' as const, size: 10, mtimeMs: extra.mtime?.() ?? 0, isLink: false } }))
   on('process.run', ($, e) => ({
     // Outside git unless a test says otherwise
@@ -314,5 +319,50 @@ describe('malformed tool arguments', () => {
     for (const value of [undefined, 1, null, ['echo'], { cmd: 'x' }]) {
       expect((await $.tool.call(JSON.parse(wire('Bash', { command: value })))).deny).toBeUndefined()
     }
+  })
+})
+
+describe('paths as a Windows engine reports them (backslashes)', () => {
+  test('finds a tokens file given by a relative option with a folder, and still blocks', { options: { tokensFile: 'styles/tokens.css' } }, async ($, on) => {
+    stubEngine(on, { 'styles/tokens.css': ':root { --space-md: 16px; }' }, { windowsPaths: true })
+
+    const out = await $.tool.call({ tool: 'Write', file_path: 'C:\\work\\a.scss', content: '.a { margin: 16px; }' })
+
+    expect(out.deny).toContain('- line 1: margin `16px` → use `--space-md` (`var(--space-md)`).')
+  })
+
+  test('checks what a shell command changed, reading the changed file at the git root', async ($, on) => {
+    const files: Record<string, string> = { 'design-tokens.json': TOKENS_JSON, '/repo/src/b.css': '.b { color: #111111; }' }
+    let statusCalls = 0
+    stubEngine(on, files, {
+      windowsPaths: true,
+      mtime: () => statusCalls,
+      process: argv => {
+        const [, sub] = argv
+        if (sub === 'rev-parse') return '/repo\n'
+        if (sub === 'status') {
+          statusCalls += 1
+          return ' M src/b.css\0'
+        }
+        return sub === 'show' ? '.b { color: #111111; }' : ''
+      },
+      toolCall: () => {
+        files['/repo/src/b.css'] = '.b { color: #111111; padding: 12px; }'
+        return { result: 'ran' }
+      },
+    })
+
+    const out = await $.tool.call({ tool: 'Bash', command: 'node scripts/gen-styles.js' })
+
+    expect(out.context?.[0]).toContain('design-guardrail: that command changed /repo/src/b.css, which now hardcodes 1 value')
+  })
+
+  test('a tokens file the guard cannot find is still reported, never a silent pass', { options: { tokensFile: 'styles/missing.css' } }, async ($, on) => {
+    const { toasts } = stubEngine(on, {}, { windowsPaths: true })
+
+    const out = await $.tool.call({ tool: 'Write', file_path: 'C:\\work\\a.css', content: '.a { color: #fff; }' })
+
+    expect(out.deny).toBeUndefined()
+    expect(toasts).toEqual(['design-guardrail: no tokens file at styles/missing.css; set tokensFile to turn the guard on'])
   })
 })

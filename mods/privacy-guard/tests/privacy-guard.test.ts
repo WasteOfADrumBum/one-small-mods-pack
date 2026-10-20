@@ -70,7 +70,9 @@ describe('findPrivacy', () => {
 
 function stubEngine(on: On, files: Record<string, string> = {}) {
   const status: (string | undefined)[] = []
-  const find = (path: string) => Object.entries(files).find(([end]) => path.endsWith(end))?.[1]
+  // Paths compare with "/" whatever separator the engine hands over: on Windows it hands backslashes.
+  const slash = (p: string) => p.replace(/\\/g, '/')
+  const find = (path: string) => Object.entries(files).find(([end]) => slash(path).endsWith(slash(end)))?.[1]
   on('fs.exists', ($, e) => ({ value: find(e.path) !== undefined }))
   on('fs.read', ($, e) => ({ value: find(e.path) ?? '' }))
   on('ui.status', ($, e) => {
