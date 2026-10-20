@@ -68,6 +68,9 @@ const str = (data: Frontmatter, key: string): string | undefined => {
   return typeof value === 'string' ? value : undefined
 }
 
+/** A text file with LF line endings: a Windows checkout may have converted the shipped files to CRLF. */
+export const readLf = (file: string): string => readFileSync(file, 'utf8').replace(/\r\n?/g, '\n')
+
 /** A relative path with `/` separators, as skills link to their files, whatever the platform's separator. */
 export const toPosix = (rel: string, sep: string = path.sep): string => (sep === '/' ? rel : rel.split(sep).join('/'))
 
@@ -102,7 +105,7 @@ export function loadSkills(root: string, problems: DefinitionProblem[] = []): Sk
     }
     let parsed
     try {
-      parsed = splitFrontmatter(readFileSync(file, 'utf8'))
+      parsed = splitFrontmatter(readLf(file))
     } catch (error) {
       problems.push({ file, message: (error as Error).message })
       continue
@@ -158,7 +161,7 @@ export function loadAgents(root: string, problems: DefinitionProblem[] = []): Ag
     const file = path.join(dir, name)
     let parsed
     try {
-      parsed = splitFrontmatter(readFileSync(file, 'utf8'))
+      parsed = splitFrontmatter(readLf(file))
     } catch (error) {
       problems.push({ file, message: (error as Error).message })
       continue

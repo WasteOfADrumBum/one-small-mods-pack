@@ -11,10 +11,10 @@
 //   Gemini   .gemini/agents/<name>.md (name, description, tools, model),
 //            .gemini/settings.json (hooks.BeforeTool), GEMINI.md
 //   Skills   .agents/skills/<name>/ (read by Codex, Copilot and Gemini CLI)
-import { readFileSync } from 'node:fs'
 import path from 'node:path'
 
 import type { Platform } from '../core/config'
+import { readLf } from '../core/definitions'
 import type { AgentDefinition, SkillDefinition } from '../core/definitions'
 import type { Identity } from '../core/identity'
 import { yamlScalar } from '../core/frontmatter'
@@ -107,7 +107,7 @@ export function claudeAgent(agent: AgentDefinition): OutFile {
 export function skillFiles(skill: SkillDefinition, base: string): OutFile[] {
   return ['SKILL.md', ...skill.resources].map(rel => ({
     path: `${base}/${skill.name}/${rel.replace(/\\/g, '/')}`,
-    content: readFileSync(path.join(skill.dir, rel), 'utf8'),
+    content: readLf(path.join(skill.dir, rel)),
     kind: 'file' as const,
   }))
 }

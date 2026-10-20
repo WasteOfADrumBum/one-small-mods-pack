@@ -75,10 +75,11 @@ test('identity: the CLI lists display name, ID and role, and honours modspack.co
 
 const tree = (dir, skip) => {
   const out = {}
+  const rel = full => path.relative(dir, full).split(path.sep).join('/')
   const walk = d => {
     for (const e of readdirSync(d, { withFileTypes: true })) {
       const full = path.join(d, e.name)
-      if (e.isDirectory()) { if (e.name !== '.git') walk(full) } else if (!skip.test(path.relative(dir, full))) out[path.relative(dir, full)] = readFileSync(full, 'utf8')
+      if (e.isDirectory()) { if (e.name !== '.git') walk(full) } else if (!skip.test(rel(full))) out[rel(full)] = readFileSync(full, 'utf8')
     }
   }
   walk(dir)

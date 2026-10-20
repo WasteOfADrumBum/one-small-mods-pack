@@ -1,6 +1,7 @@
 // The quality, accessibility, design and package gates. They run the
 // project's own tools and the mods' pure rules; nothing here calls a model.
 import { spawnSync } from 'node:child_process'
+import { spawnTool } from '../core/exec'
 import { existsSync, readFileSync } from 'node:fs'
 import path from 'node:path'
 
@@ -66,7 +67,7 @@ export function qualityGate(dir: string, config: ModspackConfig): GateResult {
     }
     const argv = scriptArgv(manager, entry.script)
     const started = Date.now()
-    const ran = spawnSync(argv[0]!, argv.slice(1), { cwd: dir, encoding: 'utf8', timeout: config.quality.timeoutSeconds * 1000, maxBuffer: 64 * 1024 * 1024, env: { ...process.env, CI: 'true' } })
+    const ran = spawnTool(argv[0]!, argv.slice(1), { cwd: dir, encoding: 'utf8', timeout: config.quality.timeoutSeconds * 1000, maxBuffer: 64 * 1024 * 1024, env: { ...process.env, CI: 'true' } })
     const seconds = ((Date.now() - started) / 1000).toFixed(1)
     const command = argv.join(' ')
     if (ran.error !== undefined && (ran.error as NodeJS.ErrnoException).code === 'ETIMEDOUT') {
@@ -181,14 +182,17 @@ export function accessibilityGate(dir: string, config: ModspackConfig): GateResu
   const components = files.filter(f => COMPONENT.test(f))
   if (components.length === 0) checks.push(notApplicable('eslint-a11y', 'no component files'))
   else {
-    const eslint = path.join(dir, 'node_modules/.bin/eslint')
-    if (!existsSync(eslint)) checks.push({ name: 'eslint-a11y', status: required ? 'BLOCKED' : 'SKIPPED', summary: 'ESLint is not installed in the project', required })
+    // On Windows .bin/eslint is a shell shim; run the package's own entry with node instead.
+    const eslintJs = path.join(dir, 'node_modules', 'eslint', 'bin', 'eslint.js')
+    const eslint = process.platform === 'win32' ? process.execPath : path.join(dir, 'node_modules/.bin/eslint')
+    const eslintArgs = process.platform === 'win32' ? [eslintJs] : []
+    if (!existsSync(process.platform === 'win32' ? eslintJs : eslint)) checks.push({ name: 'eslint-a11y', status: required ? 'BLOCKED' : 'SKIPPED', summary: 'ESLint is not installed in the project', required })
     else {
-      const printed = spawnSync(eslint, ['--print-config', components[0]!], { cwd: dir, encoding: 'utf8', timeout: 60_000 })
+      const printed = spawnSync(eslint, [...eslintArgs, '--print-config', components[0]!], { cwd: dir, encoding: 'utf8', timeout: 60_000 })
       if (printed.status !== 0 || !hasA11yRules(printed.stdout, PREFIXES)) {
         checks.push({ name: 'eslint-a11y', status: required ? 'BLOCKED' : 'SKIPPED', summary: `the project's ESLint config turns on no ${PREFIXES.join(' or ')} rules (add eslint-plugin-jsx-a11y)`, required })
       } else {
-        const ran = spawnSync(eslint, ['--format', 'json', ...components], { cwd: dir, encoding: 'utf8', timeout: 180_000, maxBuffer: 64 * 1024 * 1024 })
+        const ran = spawnSync(eslint, [...eslintArgs, '--format', 'json', ...components], { cwd: dir, encoding: 'utf8', timeout: 180_000, maxBuffer: 64 * 1024 * 1024 })
         const parsed = parseEslint(ran.stdout ?? '', PREFIXES)
         if (!Array.isArray(parsed)) checks.push({ name: 'eslint-a11y', status: required ? 'BLOCKED' : 'SKIPPED', summary: parsed.reason, required })
         else {
@@ -225,7 +229,7 @@ export function packageGate(dir: string): GateResult {
   for (const target of [...bins, ...entries]) if (!existsSync(path.join(dir, target))) problems.push(`${target} does not exist (build first?)`)
   checks.push({ name: 'manifest', status: problems.length > 0 ? 'FAIL' : 'PASS', summary: problems.length > 0 ? problems.join('; ') : `${pkg.name}@${pkg.version}: manifest fields, bin and entry points present`, required: true })
 
-  const packed = spawnSync('npm', ['pack', '--dry-run', '--json', '--ignore-scripts'], { cwd: dir, encoding: 'utf8', timeout: 120_000, maxBuffer: 64 * 1024 * 1024 })
+  const packed = spawnTool('npm', ['pack', '--dry-run', '--json', '--ignore-scripts'], { cwd: dir, encoding: 'utf8', timeout: 120_000, maxBuffer: 64 * 1024 * 1024 })
   let list: { files?: { path: string; size: number }[]; size?: number; unpackedSize?: number }[] | undefined
   try { list = JSON.parse(packed.stdout) } catch { list = undefined }
   if (list?.[0]?.files === undefined) {

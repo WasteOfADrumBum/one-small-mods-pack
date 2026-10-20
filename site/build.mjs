@@ -74,7 +74,7 @@ function markdown(src, { shift = 0 } = {}) {
   return html.join('\n')
 }
 const DOC_NAMES = ['verification', 'agent-names', 'cli', 'configuration', 'ci', 'troubleshooting', 'limitations', 'migration']
-const doc = name => readFileSync(path.join(root, name), 'utf8')
+const doc = name => readFileSync(path.join(root, name), 'utf8').replace(/\r\n?/g, '\n')
 
 // ---- layout ------------------------------------------------------------------------------------
 const NAV = [

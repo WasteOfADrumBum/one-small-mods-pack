@@ -7,6 +7,7 @@
 // findings are listed and never fail a gate. Severity is never lowered to
 // make a gate pass: dismissals are recorded with their reason.
 import { spawnSync } from 'node:child_process'
+import { spawnTool } from '../core/exec'
 import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
@@ -86,7 +87,7 @@ function dependencyAudit(dir: string, enabled: boolean): CheckResult {
     const other = ['pnpm-lock.yaml', 'yarn.lock', 'bun.lock', 'bun.lockb'].find(f => existsSync(path.join(dir, f)))
     return { name: 'dependency-audit', status: 'BLOCKED', summary: other ? `${other} found; only npm audit is integrated, run your package manager's audit by hand` : 'no lockfile to audit', required: true }
   }
-  const run = spawnSync('npm', ['audit', '--json', '--omit=dev'], { cwd: dir, encoding: 'utf8', timeout: 180_000, maxBuffer: 64 * 1024 * 1024 })
+  const run = spawnTool('npm', ['audit', '--json', '--omit=dev'], { cwd: dir, encoding: 'utf8', timeout: 180_000, maxBuffer: 64 * 1024 * 1024 })
   let parsed: { vulnerabilities?: Record<string, { severity: Severity | 'moderate'; via: unknown[]; fixAvailable: unknown }> }
   try {
     parsed = JSON.parse(run.stdout)
