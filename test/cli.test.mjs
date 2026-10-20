@@ -14,7 +14,7 @@ const files = dir => {
     for (const e of readdirSync(d, { withFileTypes: true })) {
       if (e.name === '.git') continue
       const full = path.join(d, e.name)
-      e.isDirectory() ? walk(full) : out.push(path.relative(dir, full))
+      e.isDirectory() ? walk(full) : out.push(path.relative(dir, full).split(path.sep).join('/'))
     }
   }
   walk(dir)
