@@ -63,3 +63,5 @@ jobs:
           Write-Host $out
           if ($out -match 'ENOENT') { exit 1 }
           if ($out -notmatch 'No Claude Code type declarations found') { exit 1 }
+          # The script's own exit 1 is the expected result here; do not let it fail the step.
+          exit 0
