@@ -188,11 +188,14 @@ export const register: Register = (on, options) => {
     if (e.tool !== 'Write' && e.tool !== 'Edit') return ran
     if (ran.deny !== undefined || ran.isError === true) return ran
 
+    // Tool arguments arrive as JSON from the model: a call without a string path wrote no file to check.
+    const filePath = asString(e.file_path)
+    if (filePath === undefined) return ran
     const settings = await load($, options)
-    const lower = e.file_path.toLowerCase()
+    const lower = filePath.toLowerCase()
     if (!settings.enabled || !settings.extensions.some(ext => lower.endsWith(ext))) return ran
 
-    const note = await checkFile($, settings, e.file_path)
+    const note = await checkFile($, settings, filePath)
     return note === undefined ? ran : { ...ran, context: [...(ran.context ?? []), note] }
   })
 
@@ -209,7 +212,8 @@ export const register: Register = (on, options) => {
     const after = before === undefined ? undefined : await dirtyFiles($, checked)
 
     const files = new Set(before !== undefined && after !== undefined ? changedFiles(before, after) : [])
-    for (const write of bashWrites(e.command)) {
+    const command = asString(e.command)
+    for (const write of command === undefined ? [] : bashWrites(command)) {
       if (!checked(write.path) || !(await $.fs.exists(write.path))) continue
       const stat = await $.fs.stat(write.path, { resolve: true }).catch(() => undefined)
       files.add(stat?.realPath ?? write.path)

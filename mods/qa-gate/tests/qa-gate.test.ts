@@ -268,3 +268,32 @@ test('does not count a shell command that changes no code', async ($, on) => {
 
   expect(runs).toEqual([])
 })
+
+// Tool arguments come from the model as JSON, so they can be any type. The call is built from text to
+// stay as untyped as it is on the wire.
+const wire = (tool: string, args: Record<string, unknown>) => JSON.stringify({ tool, ...args })
+
+describe('malformed tool arguments', () => {
+  test('counts no code change from a call whose path or command is not a string', async ($, on) => {
+    const { runs } = stubEngine(on, { 'package.json': PACKAGE })
+
+    for (const bad of [undefined, 42, null, ['src/a.ts'], { path: 'src/a.ts' }]) {
+      await $.tool.call(JSON.parse(wire('Write', { file_path: bad, content: 'x' })))
+      await $.tool.call(JSON.parse(wire('Edit', { file_path: bad, old_string: 'a', new_string: 'b' })))
+      await $.tool.call(JSON.parse(wire('NotebookEdit', { notebook_path: bad })))
+      await $.tool.call(JSON.parse(wire('Bash', { command: bad })))
+    }
+    await $.classic.Stop({ stop_hook_active: false })
+
+    expect(runs).toEqual([])
+  })
+
+  test('still counts the same calls once their fields are strings', async ($, on) => {
+    const { runs } = stubEngine(on, { 'package.json': PACKAGE })
+
+    await $.tool.call(JSON.parse(wire('Write', { file_path: '/work/src/a.ts', content: 'x' })))
+    await $.classic.Stop({ stop_hook_active: false })
+
+    expect(runs.length).toBe(3)
+  })
+})

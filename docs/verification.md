@@ -30,6 +30,19 @@ These show discovery. Not covered: custom agent loading, a hook firing, a model 
 
 Then `npm run typecheck`. Fix real errors; never add stub declarations or suppress errors. On 2026-10-20 this passed with 0 errors against the file Claude Code 2.1.304 wrote through route 1 (Linux).
 
+The declarations come in two shapes, and the mods typecheck against both. With a tool table, `e.tool === 'Write'` narrows `e.file_path` to `string`. Without one (the file Claude Code 2.1.304 wrote on Windows), a tool call's arguments are `unknown`. That is also the truth at run time, since the model sends JSON. So every hook narrows what it reads with `asString` before use:
+
+| Field missing or not a string | Behaviour |
+| --- | --- |
+| `file_path` / `notebook_path` (design-guardrail, privacy-guard, wcag-enforcer, qa-gate) | The call passes through unscanned; the tool itself rejects it, and no file was written to check. qa-gate counts no code change. |
+| `content`, `old_string`, `new_string` | Treated as empty text. The path is still checked. |
+| `command` (Bash hooks) | No shell write is looked for; the call passes through. |
+| `file_path` / `command` (secret-scrubber) | Not treated as a `.env` read; tool output is still scrubbed by its patterns. |
+
+Each mod has a `malformed tool arguments` test group that sends such calls as JSON text (so they are as untyped as on the wire) and also shows the same call with real strings is still refused or checked. On 2026-10-20 the 25 errors seen on Windows were reproduced on Linux by removing the tool table from the declarations; after the fix `npm run typecheck` reports 0 errors against both shapes, and the mod tests pass (118: design-guardrail 32, privacy-guard 19, qa-gate 24, secret-scrubber 20, wcag-enforcer 23).
+
+**Line endings.** Git holds the definitions as LF (`.gitattributes`: `* text=auto eol=lf`). A working tree cloned before that file existed, or with `core.autocrlf=true`, can still hold CRLF until files are checked out again. The CLI reads every definition through `readLf`, so loading, rendering, hashing and installing give the same bytes either way, and uninstall restores from the same content. The tests compare through `readLf` and check the git index for LF rather than assuming the working tree is LF. To refresh an old CRLF checkout without rewriting history: `git rm --cached -r -q . && git reset --hard` (this discards uncommitted changes, so commit or stash first). Verified on Linux by rewriting a whole clone to CRLF: the earlier two tests failed exactly as seen on Windows, and the full suite (75) passes with the corrected tests. That is a simulation; native Windows is proven only by the `windows` CI job and your own runs.
+
 **Windows.** `npm run types`, `npm run build` and the test scripts run in PowerShell. `npm run validate` and `npm test` loop over the mods with POSIX shell syntax, so on Windows run them from Git Bash or WSL, or run `claude plugin validate` and `claude plugin test` per mod folder. All of these need the `claude` command on your PATH and signed in; without it the mod typecheck and live hook checks stay BLOCKED.
 
 **Live Claude Code hooks.** Start `claude --plugin-dir mods/privacy-guard --plugin-dir mods/secret-scrubber --plugin-dir mods/design-guardrail --plugin-dir mods/modspack-agents` in a scratch project. Ask Claude to write a file containing a clearly fake key shaped like `AKIA` plus 16 capital letters and digits, and a made-up diagnosis beside a name. Expected: the write is refused or the value is redacted, with the reason. Run `/agents` and confirm the six agents are listed.

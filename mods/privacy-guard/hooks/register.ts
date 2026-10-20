@@ -64,21 +64,26 @@ const describe = (hit: PrivacyHit, lineOffset: number) =>
 export const register: Register = (on, options) => {
   on('tool.call', { tool: ['Write', 'Edit'] }, async ($, e, next) => {
     if (e.tool !== 'Write' && e.tool !== 'Edit') return next(e)
+    // Tool arguments arrive as JSON from the model: use only what really is a string. A call without a
+    // string path cannot write a file; the tool rejects it itself, so it passes through unchanged.
+    const filePath = asString(e.file_path)
+    if (filePath === undefined) return next(e)
     const settings = await load($, options)
-    const path = e.file_path.replace(/\\/g, '/')
+    const path = filePath.replace(/\\/g, '/')
     if (!settings.enabled || settings.ignore.some(glob => globToRegExp(glob).test(path))) return next(e)
 
     const scan = { publicContacts: settings.publicContacts, allowDomains: settings.allowDomains, isFixture: isFixturePath(path) }
     let lineOffset = 0
     let hits: PrivacyHit[]
     if (e.tool === 'Write') {
-      const existing = (await $.fs.exists(e.file_path)) ? await $.fs.read(e.file_path) : ''
-      hits = newHits(findPrivacy(e.content, scan), findPrivacy(existing, scan))
+      const existing = (await $.fs.exists(filePath)) ? await $.fs.read(filePath) : ''
+      hits = newHits(findPrivacy(asString(e.content) ?? '', scan), findPrivacy(existing, scan))
     } else {
-      const existing = (await $.fs.exists(e.file_path)) ? await $.fs.read(e.file_path) : ''
-      const at = existing.indexOf(e.old_string)
+      const existing = (await $.fs.exists(filePath)) ? await $.fs.read(filePath) : ''
+      const oldText = asString(e.old_string) ?? ''
+      const at = existing.indexOf(oldText)
       if (at >= 0) lineOffset = existing.slice(0, at).split('\n').length - 1
-      hits = newHits(findPrivacy(e.new_string, scan), findPrivacy(e.old_string, scan))
+      hits = newHits(findPrivacy(asString(e.new_string) ?? '', scan), findPrivacy(oldText, scan))
     }
     hits = hits.filter(hit => !hit.synthetic)
 
@@ -87,7 +92,7 @@ export const register: Register = (on, options) => {
       $.ui.status(`🛡️ privacy-guard blocked ${blocking.length} likely personal or health data value${blocking.length === 1 ? '' : 's'}`)
       return {
         deny: [
-          `privacy-guard: this ${e.tool} to ${e.file_path} writes data that looks like real personal or health information:`,
+          `privacy-guard: this ${e.tool} to ${filePath} writes data that looks like real personal or health information:`,
           ...blocking.slice(0, 20).map(hit => describe(hit, lineOffset)),
           'Use clearly synthetic values instead (example.com addresses, 555-01xx phone numbers, published test card numbers, made-up ids), or load the data at runtime from a store meant for it.',
           'If a value is truly meant to be here (public contact details, a documented example), mark its line with a `privacy-ignore` comment or list it under publicContacts in .claude/guardrail-mods/privacy-guard.json.',

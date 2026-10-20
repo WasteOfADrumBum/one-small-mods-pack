@@ -140,3 +140,33 @@ test('skips ignored paths', async ($, on) => {
   const out = await $.tool.call({ tool: 'Write', file_path: 'docs/policy.md', content: `ssn: "${SSN}"` })
   expect(out.deny).toBeUndefined()
 })
+
+// Tool arguments come from the model as JSON, so they can be any type. The call is built from text to
+// stay as untyped as it is on the wire.
+const wire = (tool: string, args: Record<string, unknown>) => JSON.stringify({ tool, ...args })
+
+describe('malformed tool arguments', () => {
+  test('passes a Write or Edit with a missing or non-string path through, unscanned', async ($, on) => {
+    stubEngine(on)
+    for (const file_path of [undefined, 42, null, ['a.ts'], { path: 'a.ts' }]) {
+      const write = await $.tool.call(JSON.parse(wire('Write', { file_path, content: `ssn: "${SSN}"` })))
+      expect(write.deny).toBeUndefined()
+      const edit = await $.tool.call(JSON.parse(wire('Edit', { file_path, old_string: 'a', new_string: `ssn: "${SSN}"` })))
+      expect(edit.deny).toBeUndefined()
+    }
+  })
+
+  test('treats non-string content and edit text as empty, without throwing', async ($, on) => {
+    stubEngine(on)
+    const write = await $.tool.call(JSON.parse(wire('Write', { file_path: '/work/src/a.ts', content: 42 })))
+    expect(write.deny).toBeUndefined()
+    const edit = await $.tool.call(JSON.parse(wire('Edit', { file_path: '/work/src/a.ts', old_string: { a: 1 }, new_string: ['x'] })))
+    expect(edit.deny).toBeUndefined()
+  })
+
+  test('still blocks the same call once its fields are real strings', async ($, on) => {
+    stubEngine(on)
+    const out = await $.tool.call(JSON.parse(wire('Write', { file_path: '/work/src/a.ts', content: `export const ssn = "${SSN}"` })))
+    expect(out.deny).toContain('privacy-guard')
+  })
+})

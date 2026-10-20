@@ -275,3 +275,44 @@ test('lets a shell command through when it can be turned off', { options: {} }, 
 
   expect(out).toEqual({ result: 'written' })
 })
+
+// Tool arguments come from the model as JSON, so any of them can be missing or the wrong type.
+// Claude Code's own declarations type them as `unknown` until a tool table narrows them, and the
+// hook must hold either way: a call that cannot be a valid file write passes through unchanged (the
+// tool rejects it itself), and a valid path with a bad field is judged on the text it really has.
+describe('malformed tool arguments', () => {
+  // The call exactly as the model sends it: JSON text, parsed where it enters the engine.
+  const wire = (tool: string, args: Record<string, unknown>) => JSON.stringify({ tool, ...args })
+  const bad: Record<string, unknown>[] = [{}, { file_path: 42 }, { file_path: null }, { file_path: ['a.css'] }, { file_path: { path: 'a.css' } }, { file_path: true }]
+
+  test('a Write or Edit without a string path is passed through, never thrown on', async ($, on) => {
+    stubEngine(on, { 'design-tokens.json': TOKENS_JSON })
+    for (const args of bad) {
+      for (const tool of ['Write', 'Edit']) {
+        const out = await $.tool.call(JSON.parse(wire(tool, { ...args, content: 'a { color: #ff0000 }', old_string: 'x', new_string: 'a { color: #ff0000 }' })))
+        expect(out.deny).toBeUndefined()
+      }
+    }
+  })
+
+  test('a valid UI path with non-string content, old_string or new_string scans nothing and does not throw', async ($, on) => {
+    stubEngine(on, { 'design-tokens.json': TOKENS_JSON })
+    for (const value of [undefined, 7, null, ['x'], { a: 1 }, false]) {
+      expect((await $.tool.call(JSON.parse(wire('Write', { file_path: '/work/src/a.css', content: value })))).deny).toBeUndefined()
+      expect((await $.tool.call(JSON.parse(wire('Edit', { file_path: '/work/src/a.css', old_string: value, new_string: value })))).deny).toBeUndefined()
+    }
+  })
+
+  test('the same call with real strings is still refused', async ($, on) => {
+    stubEngine(on, { 'design-tokens.json': TOKENS_JSON })
+    const out = await $.tool.call(JSON.parse(wire('Write', { file_path: '/work/src/a.css', content: 'a { color: #ff0000 }' })))
+    expect(out.deny).toContain('design-guardrail')
+  })
+
+  test('a Bash call without a string command is passed through', async ($, on) => {
+    stubEngine(on, { 'design-tokens.json': TOKENS_JSON })
+    for (const value of [undefined, 1, null, ['echo'], { cmd: 'x' }]) {
+      expect((await $.tool.call(JSON.parse(wire('Bash', { command: value })))).deny).toBeUndefined()
+    }
+  })
+})

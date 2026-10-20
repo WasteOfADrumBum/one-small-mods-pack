@@ -222,3 +222,32 @@ test('leaves a clean attachment as it was', async ($, on) => {
 
   expect(out.text).toBe('Remember the todo list.')
 })
+
+// Tool arguments come from the model as JSON, so they can be any type. The call is built from text to
+// stay as untyped as it is on the wire.
+const wire = (tool: string, args: Record<string, unknown>) => JSON.stringify({ tool, ...args })
+
+describe('malformed tool arguments', () => {
+  test('does not throw on a Read path or Bash command that is not a string, and scrubs the output as usual', async ($, on) => {
+    stubEngine(on)
+    const session = mock.session(on)
+
+    for (const [i, bad] of [undefined, 42, null, ['.env'], { path: '.env' }].entries()) {
+      await $.tool.call(JSON.parse(wire('Read', { file_path: bad, tool_use_id: `r${i}` })))
+      await $.tool.call(JSON.parse(wire('Bash', { command: bad, tool_use_id: `b${i}` })))
+    }
+    await $.session.append(toolResult('r0', `export GITHUB_TOKEN=${GITHUB}`))
+
+    expect(firstResult(session.appended())).toBe('export GITHUB_TOKEN=[REDACTED:github-token]')
+  })
+
+  test('does not treat a non-string path as a .env file', async ($, on) => {
+    stubEngine(on)
+    const session = mock.session(on)
+
+    await $.tool.call(JSON.parse(wire('Read', { file_path: 42, tool_use_id: 'r9' })))
+    await $.session.append(toolResult('r9', 'PORT=3000'))
+
+    expect(firstResult(session.appended())).toBe('PORT=3000')
+  })
+})

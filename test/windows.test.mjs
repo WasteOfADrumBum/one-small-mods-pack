@@ -2,11 +2,12 @@
 // CRLF checkouts and path separators. (A native Windows CI job runs the whole suite.)
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
+import { execFileSync } from 'node:child_process'
 import { cpSync, mkdtempSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
 
-import { DEFINITIONS_ROOT, SHELL_SAFE, loadAgents, loadSkills, npmCli, readLf, spawnTool, validatePackage } from '../dist/lib.mjs'
+import { DEFINITIONS_ROOT, SHELL_SAFE, loadAgents, loadSkills, npmCli, renderAll, readLf, spawnTool, validatePackage } from '../dist/lib.mjs'
 import { ROOT } from './helpers.mjs'
 
 test('exec: the npm entry is found beside node (the Windows layout) or from npm_execpath, and run with node, not a shell', () => {
@@ -46,6 +47,18 @@ const crlfCopy = () => {
   return dir
 }
 
+// The working tree can be CRLF (a clone made before .gitattributes, or core.autocrlf on Windows), so these
+// tests never assume it is LF: canonical content is what git holds in the index, or the working tree read
+// through readLf, and a CRLF copy is made from that, never from raw bytes.
+const lf = file => readLf(file)
+const gitIndex = rel => {
+  try {
+    return execFileSync('git', ['show', `:${rel}`], { cwd: ROOT, stdio: ['ignore', 'pipe', 'ignore'], maxBuffer: 10_000_000 }).toString('utf8')
+  } catch {
+    return undefined
+  }
+}
+
 test('definitions: a CRLF checkout (Windows autocrlf) loads to the same skills and agents', () => {
   const dir = crlfCopy()
   try {
@@ -56,14 +69,34 @@ test('definitions: a CRLF checkout (Windows autocrlf) loads to the same skills a
     const lfSkills = loadSkills(DEFINITIONS_ROOT, []), lfAgents = loadAgents(DEFINITIONS_ROOT, [])
     assert.deepEqual(skills.map(s => [s.name, s.description, s.sections.map(x => x.heading)]), lfSkills.map(s => [s.name, s.description, s.sections.map(x => x.heading)]))
     assert.deepEqual(agents.map(a => [a.name, a.description, a.tools]), lfAgents.map(a => [a.name, a.description, a.tools]))
-    assert.equal(readLf(path.join(dir, 'skills', 'wcag-audit', 'SKILL.md')), readFileSync(path.join(DEFINITIONS_ROOT, 'skills', 'wcag-audit', 'SKILL.md'), 'utf8'))
+    // Same content whichever line endings the checkout has: compare through readLf on both sides.
+    assert.equal(lf(path.join(dir, 'skills', 'wcag-audit', 'SKILL.md')), lf(path.join(DEFINITIONS_ROOT, 'skills', 'wcag-audit', 'SKILL.md')))
+    assert.ok(!lf(path.join(dir, 'skills', 'wcag-audit', 'SKILL.md')).includes('\r'))
   } finally {
     rmSync(dir, { recursive: true, force: true })
   }
 })
 
-test('package: the shipped definitions are LF in the repository (.gitattributes keeps Windows checkouts LF)', () => {
-  assert.match(readFileSync(path.join(ROOT, '.gitattributes'), 'utf8'), /^\* text=auto eol=lf$/m)
-  assert.ok(!readFileSync(path.join(DEFINITIONS_ROOT, 'agents', 'code-reviewer.md'), 'utf8').includes('\r'))
+test('install: output rendered from a CRLF checkout is byte-identical to the LF one (installs and uninstalls stay deterministic)', () => {
+  const dir = crlfCopy()
+  try {
+    const render = root => renderAll({ platforms: ['claude-code', 'codex', 'copilot', 'gemini'], agents: loadAgents(root, []), skills: loadSkills(root, []), ci: true, standalone: true })
+    const fromCrlf = render(dir), fromLf = render(DEFINITIONS_ROOT)
+    assert.deepEqual(fromCrlf, fromLf)
+    for (const o of fromCrlf) if ('content' in o) assert.ok(!o.content.includes('\r'), `${o.path} has no CR`)
+  } finally {
+    rmSync(dir, { recursive: true, force: true })
+  }
+})
+
+test('package: .gitattributes keeps definitions LF, and git holds them as LF whatever the working tree has', () => {
+  assert.match(lf(path.join(ROOT, '.gitattributes')), /^\* text=auto eol=lf$/m)
+  // The canonical content is the index: a working tree made by a CRLF checkout before .gitattributes
+  // existed is not a repository defect, so it is not asserted on. Outside git (an npm tarball) the
+  // shipped files are checked directly.
+  const rel = 'mods/modspack-agents/agents/code-reviewer.md'
+  const indexed = gitIndex(rel)
+  if (indexed !== undefined) assert.ok(!indexed.includes('\r'), 'the index holds LF')
+  else assert.ok(!readFileSync(path.join(ROOT, rel), 'utf8').includes('\r'), 'the shipped file is LF')
   assert.deepEqual(validatePackage(ROOT), [])
 })

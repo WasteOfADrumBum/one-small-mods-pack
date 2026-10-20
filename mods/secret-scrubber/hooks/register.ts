@@ -92,9 +92,10 @@ export const register: Register = (on, options) => {
   const envCalls = new Set<string>()
 
   on('tool.call', ($, e, next) => {
-    const isEnv =
-      (e.tool === 'Read' && ENV_FILE.test(e.file_path)) ||
-      (e.tool === 'Bash' && ENV_IN_COMMAND.test(e.command))
+    // Tool arguments arrive as JSON from the model: only a string can name a .env file or run a command.
+    const readPath = e.tool === 'Read' ? asString(e.file_path) : undefined
+    const command = e.tool === 'Bash' ? asString(e.command) : undefined
+    const isEnv = (readPath !== undefined && ENV_FILE.test(readPath)) || (command !== undefined && ENV_IN_COMMAND.test(command))
     if (isEnv) envCalls.add(e.tool_use_id)
     return next(e)
   })
