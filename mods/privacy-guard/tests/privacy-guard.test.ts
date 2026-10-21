@@ -172,3 +172,104 @@ describe('malformed tool arguments', () => {
     expect(out.deny).toContain('privacy-guard')
   })
 })
+
+// ---- editing the guard's own config -------------------------------------------------------------------
+const CONFIG = '/work/.claude/guardrail-mods/privacy-guard.json'
+const PERSON = 'jane.doe@acme.io'
+const pretty = (value: unknown) => JSON.stringify(value, null, 2) + '\n'
+const strict = { options: { blockAt: 'low' } } as const
+
+describe('privacy-guard.json: publicContacts', () => {
+  test('lets a Write add an address to publicContacts at blockAt low', strict, async ($, on) => {
+    stubEngine(on, { 'privacy-guard.json': pretty({ blockAt: 'low' }) })
+
+    const out = await $.tool.call({ tool: 'Write', file_path: CONFIG, content: pretty({ blockAt: 'low', publicContacts: [PERSON] }) })
+
+    expect(out.deny).toBeUndefined()
+  })
+
+  test('the same address is still blocked in ordinary code at blockAt low', strict, async ($, on) => {
+    stubEngine(on, {})
+
+    const out = await $.tool.call({ tool: 'Write', file_path: '/work/src/a.ts', content: `const owner = "${PERSON}"` })
+
+    expect(out.deny).toContain('privacy-guard')
+  })
+
+  test('lets an Edit add an address to the list, judging the whole file', strict, async ($, on) => {
+    const before = pretty({ blockAt: 'low', publicContacts: ['help@acme.io'] })
+    stubEngine(on, { 'privacy-guard.json': before })
+
+    const out = await $.tool.call({ tool: 'Edit', file_path: CONFIG, old_string: '"help@acme.io"', new_string: `"help@acme.io",\n    "${PERSON}"` })
+
+    expect(out.deny).toBeUndefined()
+  })
+
+  test('accepts a Windows path to the config', strict, async ($, on) => {
+    stubEngine(on, {})
+    const win = await $.tool.call({ tool: 'Write', file_path: 'C:\\work\\.claude\\guardrail-mods\\privacy-guard.json', content: pretty({ blockAt: 'low', publicContacts: [PERSON] }) })
+    expect(win.deny).toBeUndefined()
+  })
+
+  test('accepts a public phone number listed there', strict, async ($, on) => {
+    stubEngine(on, {})
+
+    const out = await $.tool.call({ tool: 'Write', file_path: CONFIG, content: pretty({ blockAt: 'low', publicContacts: ['+1 (415) 555-0132'] }) })
+
+    expect(out.deny).toBeUndefined()
+  })
+
+  test('does not exempt the same address in any other field of the file', strict, async ($, on) => {
+    stubEngine(on, {})
+
+    const out = await $.tool.call({ tool: 'Write', file_path: CONFIG, content: pretty({ blockAt: 'low', publicContacts: [PERSON], owner: PERSON }) })
+
+    expect(out.deny).toContain('privacy-guard')
+    expect(out.deny).not.toContain(PERSON)
+  })
+
+  test('still blocks an SSN, a card or health data in the config, with or without a valid list', strict, async ($, on) => {
+    stubEngine(on, {})
+    const write = (config: unknown) => $.tool.call({ tool: 'Write', file_path: CONFIG, content: pretty(config) })
+
+    expect((await write({ publicContacts: [PERSON], note: `ssn: ${SSN}` })).deny).toContain('us-ssn')
+    expect((await write({ publicContacts: [PERSON], note: `card: ${CARD}` })).deny).toContain('payment-card')
+    expect((await write({ publicContacts: [PERSON], name: 'Maria Lopez', diagnosis: 'E11.9 type 2 diabetes', mrn: 'MRN-0042-7781' })).deny).toContain('privacy-guard')
+    // a number listed as a "contact" is not an SSN just because it sits in the list
+    expect((await write({ publicContacts: [SSN] })).deny).toContain('us-ssn')
+  })
+
+  test('blocks an address listed in a malformed or mistyped config', strict, async ($, on) => {
+    stubEngine(on, {})
+    const text = (content: string) => $.tool.call({ tool: 'Write', file_path: CONFIG, content })
+    const denied = async (content: string) => expect((await text(content)).deny).toContain('privacy-guard')
+
+    await denied(`{\n  "publicContacts": [\n    "${PERSON}"\n  ]`)
+    await denied(`{\n  "publicContacts": "${PERSON}"\n}`)
+    await denied(`{\n  "publicContacts": {\n    "main": "${PERSON}"\n  }\n}`)
+    await denied(`{\n  "publicContacts": [\n    { "email": "${PERSON}" }\n  ]\n}`)
+    await denied(`{\n  "other": {\n    "publicContacts": [\n      "${PERSON}"\n    ]\n  }\n}`)
+    await denied(`[\n  "${PERSON}"\n]`)
+    await denied(`{ "publicContacts": ["${PERSON}"], "owner": "${PERSON}" }`)
+    await denied(`{\n  "publicContacts": [\n    "${PERSON}"\n  ], "owner": "${PERSON}"\n}`)
+    await denied(`{\n  "publicContacts": [\n    "${PERSON}"\n  ],\n  "publicContacts": [\n    "x@y.co"\n  ]\n}`)
+    await denied(`{\n  "publicContacts": [\n    "${PERSON} and notes"\n  ]\n}`)
+    await denied(`{\n  "publicContacts": [\n    42,\n    "${PERSON}\\n"\n  ]\n}`)
+  })
+
+  test('another file with the same content is judged as usual', strict, async ($, on) => {
+    stubEngine(on, {})
+
+    const out = await $.tool.call({ tool: 'Write', file_path: '/work/docs/privacy-guard.json', content: pretty({ blockAt: 'low', publicContacts: [PERSON] }) })
+
+    expect(out.deny).toContain('privacy-guard')
+  })
+
+  test('a malformed call to the config path passes through without throwing', strict, async ($, on) => {
+    stubEngine(on, {})
+
+    const out = await $.tool.call(JSON.parse(wire('Write', { file_path: CONFIG, content: 42 })))
+
+    expect(out.deny).toBeUndefined()
+  })
+})

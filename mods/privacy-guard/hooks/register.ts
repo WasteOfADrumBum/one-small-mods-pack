@@ -2,8 +2,9 @@ import type { EngineInterface, PluginOptions, Register } from 'claude-code'
 
 import { asBool, asList, asString, parseConfigText, pick } from './config'
 import type { RawConfig } from './config'
+import { isConfigPath, publicContactsOf } from './config-guard'
 import { findPrivacy, isFixturePath, maskValue, newHits } from './privacy'
-import type { PrivacyHit, PrivacySeverity } from './privacy'
+import type { PrivacyHit, PrivacyOptions, PrivacySeverity } from './privacy'
 
 type Settings = {
   enabled: boolean
@@ -14,6 +15,8 @@ type Settings = {
   allowDomains: string[]
   ignore: string[]
 }
+
+const DEFAULT_CONFIG = '.claude/guardrail-mods/privacy-guard.json'
 
 const ORDER: PrivacySeverity[] = ['critical', 'high', 'medium', 'low', 'info']
 const atLeast = (severity: PrivacySeverity, threshold: PrivacySeverity) => ORDER.indexOf(severity) <= ORDER.indexOf(threshold)
@@ -32,7 +35,7 @@ async function readConfigFile($: EngineInterface, path: string): Promise<RawConf
 }
 
 async function load($: EngineInterface, options: PluginOptions): Promise<Settings> {
-  const configFile = asString(options.configFile) ?? '.claude/guardrail-mods/privacy-guard.json'
+  const configFile = asString(options.configFile) ?? DEFAULT_CONFIG
   const file = await readConfigFile($, configFile)
   const mode = pick(file, options, 'mode', 'block', asString)
   return {
@@ -44,6 +47,20 @@ async function load($: EngineInterface, options: PluginOptions): Promise<Setting
     allowDomains: pick(file, options, 'allowDomains', [] as string[], asList),
     ignore: pick(file, options, 'ignore', [] as string[], asList),
   }
+}
+
+/**
+ * What a write to the guard's own config adds. Contact details listed under a well-formed top-level
+ * `publicContacts` array are public by that very list, so they are not held against the write; the same
+ * values anywhere else in the file, and every other kind of value, are judged as usual.
+ */
+function scanConfig(text: string, scan: PrivacyOptions): PrivacyHit[] {
+  const hits = findPrivacy(text, scan)
+  const listed = publicContactsOf(text)
+  if (listed === undefined || listed.entries.length === 0) return hits
+  const key = (hit: PrivacyHit) => `${hit.line}:${hit.kind}:${hit.value}`
+  const stillFlagged = new Set(findPrivacy(text, { ...scan, publicContacts: [...(scan.publicContacts ?? []), ...listed.entries] }).map(key))
+  return hits.filter(hit => stillFlagged.has(key(hit)) || hit.line < listed.firstLine || hit.line > listed.lastLine)
 }
 
 /** A simple glob (`*`, `**`) as a regular expression over a path. */
@@ -73,17 +90,25 @@ export const register: Register = (on, options) => {
     if (!settings.enabled || settings.ignore.some(glob => globToRegExp(glob).test(path))) return next(e)
 
     const scan = { publicContacts: settings.publicContacts, allowDomains: settings.allowDomains, isFixture: isFixturePath(path) }
+    const isConfig = isConfigPath(path, asString(options.configFile) ?? DEFAULT_CONFIG)
     let lineOffset = 0
     let hits: PrivacyHit[]
+    const existing = (await $.fs.exists(filePath)) ? await $.fs.read(filePath) : ''
     if (e.tool === 'Write') {
-      const existing = (await $.fs.exists(filePath)) ? await $.fs.read(filePath) : ''
-      hits = newHits(findPrivacy(asString(e.content) ?? '', scan), findPrivacy(existing, scan))
+      const content = asString(e.content) ?? ''
+      hits = isConfig ? newHits(scanConfig(content, scan), scanConfig(existing, scan)) : newHits(findPrivacy(content, scan), findPrivacy(existing, scan))
     } else {
-      const existing = (await $.fs.exists(filePath)) ? await $.fs.read(filePath) : ''
       const oldText = asString(e.old_string) ?? ''
+      const newText = asString(e.new_string) ?? ''
       const at = existing.indexOf(oldText)
-      if (at >= 0) lineOffset = existing.slice(0, at).split('\n').length - 1
-      hits = newHits(findPrivacy(asString(e.new_string) ?? '', scan), findPrivacy(oldText, scan))
+      if (isConfig && oldText !== '' && at >= 0) {
+        // The file as it will be: judge the whole config, so its publicContacts list can be read.
+        const after = existing.slice(0, at) + newText + existing.slice(at + oldText.length)
+        hits = newHits(scanConfig(after, scan), scanConfig(existing, scan))
+      } else {
+        if (at >= 0) lineOffset = existing.slice(0, at).split('\n').length - 1
+        hits = newHits(findPrivacy(newText, scan), findPrivacy(oldText, scan))
+      }
     }
     hits = hits.filter(hit => !hit.synthetic)
 
