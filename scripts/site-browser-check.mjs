@@ -27,7 +27,10 @@ const axeSource = readFileSync(path.join(root, 'node_modules', 'axe-core', 'axe.
 const types = { '.html': 'text/html', '.css': 'text/css', '.js': 'text/javascript' }
 const server = createServer((req, res) => {
   const file = path.join(dist, req.url === '/' ? 'index.html' : req.url.split('?')[0])
-  try { res.writeHead(200, { 'content-type': types[path.extname(file)] ?? 'text/plain' }); res.end(readFileSync(file)) } catch { res.writeHead(404); res.end() }
+  let body
+  try { body = readFileSync(file) } catch { res.writeHead(404); res.end(); return }
+  res.writeHead(200, { 'content-type': types[path.extname(file)] ?? 'text/plain' })
+  res.end(body)
 }).listen(0)
 const url = `http://127.0.0.1:${server.address().port}`
 const failures = []
@@ -94,6 +97,39 @@ for (const [zoom, width] of [['200%', 640], ['400%', 320]]) {
   }
   await context.close()
 }
+// WCAG 1.4.12 text spacing: user-applied spacing must not clip or overflow content.
+{
+  const context = await browser.newContext({ viewport: { width: 1280, height: 900 } })
+  const page = await context.newPage()
+  for (const f of pages) {
+    await page.goto(`${url}/${f}`)
+    await page.addStyleTag({ content: '*{line-height:1.5!important;letter-spacing:.12em!important;word-spacing:.16em!important}p{margin-bottom:2em!important}' })
+    const clipped = await page.evaluate(() => [...document.querySelectorAll('body *')].filter(e => {
+      const cs = getComputedStyle(e)
+      return /hidden|clip/.test(cs.overflowY) && e.scrollHeight > e.clientHeight + 1 && e.clientHeight > 0
+    }).length)
+    if (clipped > 0) failures.push(`text spacing ${f}: ${clipped} elements clip their text`)
+  }
+  await context.close()
+}
+// Windows high contrast (forced colors, emulated): controls keep a boundary and focus stays visible.
+{
+  const context = await browser.newContext({ forcedColors: 'active', viewport: { width: 1280, height: 900 } })
+  const page = await context.newPage()
+  for (const f of pages) {
+    await page.goto(`${url}/${f}`)
+    if (!(await page.evaluate(() => matchMedia('(forced-colors: active)').matches))) { failures.push(`forced colors ${f}: emulation did not engage`); continue }
+    const unbounded = await page.evaluate(() => [...document.querySelectorAll('a.button,button,input')].filter(e => {
+      const cs = getComputedStyle(e)
+      return !['top', 'right', 'bottom', 'left'].some(s => parseFloat(cs[`border${s[0].toUpperCase()}${s.slice(1)}Width`]) > 0 && cs[`border${s[0].toUpperCase()}${s.slice(1)}Style`] !== 'none')
+    }).length)
+    if (unbounded > 0) failures.push(`forced colors ${f}: ${unbounded} buttons/inputs have no border, so their shape is lost`)
+    await page.keyboard.press('Tab')
+    const focus = await page.evaluate(() => { const cs = getComputedStyle(document.activeElement); return cs.outlineStyle !== 'none' && parseFloat(cs.outlineWidth) >= 2 })
+    if (!focus) failures.push(`forced colors ${f}: the first focus stop has no visible outline`)
+  }
+  await context.close()
+}
 // Keyboard: every Tab stop is visible, has a visible focus indicator, and has an accessible name; the order follows the page.
 {
   const page = await browser.newPage({ viewport: { width: 1280, height: 900 } })
@@ -150,4 +186,4 @@ for (const [zoom, width] of [['200%', 640], ['400%', 320]]) {
 await browser.close()
 server.close()
 if (failures.length > 0) { console.log(`FAIL\n${failures.map(f => `- ${f}`).join('\n')}`); process.exit(1) }
-console.log(`PASS: ${pages.length} pages: axe incl. contrast in light and dark, 200% and 400% zoom, keyboard focus order and indicators, search, accessibility tree names, reduced motion, no-JS`)
+console.log(`PASS: ${pages.length} pages: axe incl. contrast in light and dark, 200% and 400% zoom, text spacing, forced colors (emulated), keyboard focus order and indicators, search, accessibility tree names, reduced motion, no-JS`)

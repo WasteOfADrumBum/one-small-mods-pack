@@ -303,6 +303,7 @@ nav a[aria-current=page]{font-weight:700;text-decoration:none;border-bottom:3px 
 h1{font-size:2rem;line-height:1.2}
 .lead{font-size:1.2rem}
 .button{display:inline-block;background:var(--accent);color:var(--bg);padding:.75rem 1.25rem;border-radius:.4rem;text-decoration:none;font-weight:600;min-height:44px}
+@media (forced-colors:active){.button{border:2px solid ButtonText}}
 pre,code{background:var(--code);border-radius:.25rem}
 code{padding:.1em .3em;font-size:.9em;overflow-wrap:anywhere}
 pre code{overflow-wrap:normal}

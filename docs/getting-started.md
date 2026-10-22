@@ -13,6 +13,8 @@ ModsPack gives your AI coding tool a shared set of agent roles, skills and guard
 
 ## Try it without changing anything
 
+These `npx` commands work once the package is published; until then use the clone steps under "Install for your tools".
+
 ```text
 npx one-small-modspack inspect
 npx one-small-modspack init

@@ -1,6 +1,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { execFileSync } from 'node:child_process'
+import { readdirSync, existsSync } from 'node:fs'
 import path from 'node:path'
 import { npmCli } from '../dist/lib.mjs'
 import { ROOT, project } from './helpers.mjs'
@@ -12,7 +13,21 @@ test('npm artifact: the installed tarball validates and installs all platform de
     assert.ok(npm, 'npm must be available to verify the release artifact')
     const runNpm = (args, cwd) => execFileSync(process.execPath, [npm, ...args], { cwd, encoding: 'utf8', timeout: 120_000 })
     const [packed] = JSON.parse(runNpm(['pack', '--ignore-scripts', '--json', '--pack-destination', p.dir], ROOT))
-    assert.ok(packed.files.some(f => f.path === '.claude-plugin/marketplace.json'))
+    const shipped = new Set(packed.files.map(f => f.path))
+    assert.ok(shipped.has('.claude-plugin/marketplace.json'))
+    for (const required of ['README.md', 'LICENSE', 'CHANGELOG.md', 'package.json', 'dist/modspack.mjs']) assert.ok(shipped.has(required), `${required} missing from tarball`)
+    // Plugin hook modules and helper scripts are the runtime of the guard mods; a bare directory
+    // pattern in package.json "files" silently drops them, so compare against what is on disk.
+    const walk = dir => readdirSync(dir, { withFileTypes: true }).flatMap(e => e.isDirectory() ? walk(path.join(dir, e.name)) : [path.join(dir, e.name)])
+    const onDisk = []
+    for (const mod of readdirSync(path.join(ROOT, 'mods'))) {
+      for (const sub of ['hooks', 'scripts']) {
+        const dir = path.join(ROOT, 'mods', mod, sub)
+        if (existsSync(dir)) onDisk.push(...walk(dir).map(f => path.relative(ROOT, f).split(path.sep).join('/')))
+      }
+    }
+    assert.ok(onDisk.length >= 20, 'expected to find the guard mods hook modules on disk')
+    assert.deepEqual(onDisk.filter(f => !shipped.has(f)), [], 'hook/script runtime files missing from the tarball')
     runNpm(['install', '--ignore-scripts', '--no-audit', '--no-fund', path.join(p.dir, packed.filename)], p.dir)
     const entry = path.join(p.dir, 'node_modules', 'one-small-modspack', 'dist', 'modspack.mjs')
     const run = args => execFileSync(process.execPath, [entry, ...args], { cwd: p.dir, encoding: 'utf8', timeout: 30_000 })

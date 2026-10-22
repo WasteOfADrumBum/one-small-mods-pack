@@ -32,16 +32,16 @@
     "dist/modspack.mjs",
     ".claude-plugin/marketplace.json",
     "mods/*/.claude-plugin/plugin.json",
-    "mods/*/hooks",
-    "mods/*/scripts",
+    "mods/*/hooks/**",
+    "mods/*/scripts/**",
     "mods/*/config.example.json",
-    "mods/modspack-agents/agents",
+    "mods/modspack-agents/agents/**",
     "mods/modspack-agents/identities.json",
-    "mods/modspack-agents/skills",
-    "catalog",
-    "schema",
+    "mods/modspack-agents/skills/**",
+    "catalog/**",
+    "schema/**",
     "CHANGELOG.md",
-    "docs"
+    "docs/**"
   ],
   "engines": {
     "node": ">=20"

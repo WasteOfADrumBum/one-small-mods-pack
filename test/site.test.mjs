@@ -125,3 +125,8 @@ test('site: every agent shows its display name, role, ID and the required sectio
     assert.equal(card.querySelectorAll('li strong').length >= 4, true, 'all four platforms listed')
   }
 })
+
+test('site: styled controls keep a border in Windows high contrast (forced colors)', () => {
+  const css = readFileSync(path.join(dist, 'style.css'), 'utf8')
+  assert.match(css, /@media \(forced-colors:active\)\{\.button\{border:2px solid ButtonText\}\}/)
+})
