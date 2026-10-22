@@ -258,6 +258,27 @@ test('hook codex: denies a patch that adds a credential, in Codex format, withou
   }
 })
 
+test('hook codex: an AWS-format key in apply_patch is denied, but the documented example key is deliberately allowed', async () => {
+  const p = project()
+  try {
+    // Live Codex 0.159.3 payload shape: the patch text is in tool_input.command.
+    const patchFor = key => `*** Begin Patch
+*** Add File: secret.txt
++aws_key=${key}
+*** End Patch`
+    const real = 'AKIA' + 'J7Q2M4X9B5N3R6TW'
+    const deny = await hook('codex', { hook_event_name: 'PreToolUse', tool_name: 'apply_patch', tool_input: { command: patchFor(real) }, cwd: p.dir }, p.dir)
+    assert.equal(JSON.parse(deny.out).hookSpecificOutput.permissionDecision, 'deny')
+    assert.match(deny.out, /aws-access-key-id \[masked, 20 chars\]/)
+    assert.ok(!deny.out.includes(real))
+    // AWS's published example key contains "EXAMPLE": a placeholder, so it is not a positive control.
+    const example = await hook('codex', { hook_event_name: 'PreToolUse', tool_name: 'apply_patch', tool_input: { command: patchFor('AKIAIOSFODNN7' + 'EXAMPLE') }, cwd: p.dir }, p.dir)
+    assert.equal(example.out, '')
+  } finally {
+    p.cleanup()
+  }
+})
+
 test('hook gemini: denies write_file with personal data, allows replace that only removes it; shell is not judged', async () => {
   const p = project()
   try {

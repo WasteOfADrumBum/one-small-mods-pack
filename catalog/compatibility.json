@@ -69,7 +69,7 @@
     },
     "automatic-hooks": {
       "claude-code": { "status": "supported", "verified": "harness", "note": "Five mods pass the Windows 2.1.307 harness (131 tests). Primary live checks are user-reported; recovered QA Gate and WCAG transcripts support automatic behavior. A new real Edit confirms the WCAG jsx-a11y path. See docs/release-verification.md for scope." },
-      "codex": { "status": "partial", "verified": "static", "note": ".codex/hooks.json PreToolUse → modspack hook codex. Project hooks run only after the user trusts them (/hooks). Hook protocol tested with recorded payloads, not a live Codex." },
+      "codex": { "status": "partial", "verified": "runtime", "note": ".codex/hooks.json PreToolUse → modspack hook codex. Project hooks run only after the user trusts them (/hooks); an untrusted hook is skipped silently. Live: Codex 0.159.3 with --dangerously-bypass-hook-trust denied an apply_patch adding an AWS-format key, and an untrusted control run wrote it. Interactive /hooks trust was not exercised." },
       "copilot": { "status": "partial", "verified": "static", "note": ".github/hooks/modspack.json preToolUse → modspack hook copilot. Tested with recorded payloads, not a live Copilot." },
       "gemini": { "status": "partial", "verified": "static", "note": ".gemini/settings.json BeforeTool → modspack hook gemini. Tested with recorded payloads, not a live Gemini CLI." }
     },
