@@ -30,6 +30,7 @@
   },
   "files": [
     "dist/modspack.mjs",
+    ".claude-plugin/marketplace.json",
     "mods/*/.claude-plugin/plugin.json",
     "mods/*/hooks",
     "mods/*/scripts",

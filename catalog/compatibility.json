@@ -1,5 +1,5 @@
 {
-  "checkedOn": "2026-10-20",
+  "checkedOn": "2026-10-21",
   "platforms": {
     "claude-code": {
       "label": "Claude Code",
@@ -8,7 +8,7 @@
     },
     "codex": {
       "label": "OpenAI Codex",
-      "version": "0.163.0 (runtime checks without a model or login)",
+      "version": "0.159.3 (Windows instruction/skill discovery); 0.163.0 (earlier discovery)",
       "docs": ["https://developers.openai.com/codex/skills", "https://developers.openai.com/codex/subagents", "https://developers.openai.com/codex/hooks"]
     },
     "copilot": {
@@ -39,13 +39,13 @@
   "matrix": {
     "repository-instructions": {
       "claude-code": { "status": "partial", "verified": "static", "note": "CLAUDE.md block is written and read back by tests; Claude Code reading it was not exercised live." },
-      "codex": { "status": "supported", "verified": "runtime", "note": "Codex 0.163.0: `codex debug prompt-input` shows the ModsPack block from AGENTS.md inside the model-visible instructions. Whether the model follows it was not tested." },
+      "codex": { "status": "supported", "verified": "runtime", "note": "Codex 0.159.3 on Windows: debug prompt-input succeeds and a real read-only exec session identifies the ModsPack block. Hook enforcement and skill execution were not tested. Earlier 0.163.0 prompt-input discovery also passed." },
       "copilot": { "status": "partial", "verified": "static", "note": "AGENTS.md block (Copilot reads AGENTS.md and .github/copilot-instructions.md); not runtime-tested." },
       "gemini": { "status": "partial", "verified": "static", "note": "GEMINI.md block; not runtime-tested." }
     },
     "skill-discovery": {
       "claude-code": { "status": "partial", "verified": "static", "note": "Skills ship in the modspack-agents plugin; claude plugin validate passes. Live discovery not exercised (mods rollout flag off in the test container)." },
-      "codex": { "status": "supported", "verified": "runtime", "note": "Codex 0.163.0: `codex debug prompt-input` in a project set up by `modspack init` lists all 12 skills from .agents/skills in the model-visible input. Skill use by a model was not tested (no login)." },
+      "codex": { "status": "supported", "verified": "runtime", "note": "Codex 0.159.3 on Windows: a real read-only exec session lists all 12 ModsPack skills. Invocation, custom agents and hook enforcement were not tested. Earlier 0.163.0 prompt-input discovery also passed." },
       "copilot": { "status": "supported", "verified": "runtime", "note": "Copilot CLI 1.0.100: `copilot skill list` shows all 12 project skills from .agents/skills. Use by a model was not tested (no login)." },
       "gemini": { "status": "supported", "verified": "runtime", "note": "Gemini CLI 0.64.0: `gemini skills list` in a trusted project lists all 12 skills from .agents/skills as Enabled. Activation by a model was not tested (no login)." }
     },
@@ -68,7 +68,7 @@
       "gemini": { "status": "partial", "verified": "static", "note": "Subagents are called by the main agent; not runtime-tested." }
     },
     "automatic-hooks": {
-      "claude-code": { "status": "supported", "verified": "harness", "note": "Five mods, verified with claude plugin test (stubbed engine). Live load not exercised in the test container." },
+      "claude-code": { "status": "supported", "verified": "harness", "note": "Five mods pass the Windows 2.1.307 harness (131 tests). Primary live checks are user-reported; recovered QA Gate and WCAG transcripts support automatic behavior. A new real Edit confirms the WCAG jsx-a11y path. See docs/release-verification.md for scope." },
       "codex": { "status": "partial", "verified": "static", "note": ".codex/hooks.json PreToolUse → modspack hook codex. Project hooks run only after the user trusts them (/hooks). Hook protocol tested with recorded payloads, not a live Codex." },
       "copilot": { "status": "partial", "verified": "static", "note": ".github/hooks/modspack.json preToolUse → modspack hook copilot. Tested with recorded payloads, not a live Copilot." },
       "gemini": { "status": "partial", "verified": "static", "note": ".gemini/settings.json BeforeTool → modspack hook gemini. Tested with recorded payloads, not a live Gemini CLI." }

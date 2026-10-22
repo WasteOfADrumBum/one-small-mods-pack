@@ -2,6 +2,14 @@
 
 What has been checked, how, and what still needs a person or a tool that was not available. Statuses: PASS, PARTIAL, NOT TESTED, BLOCKED.
 
+## Pre-release checkpoint: 2026-10-21 (America/New_York)
+
+Base: PR #3, `1c372fac7138d5fec2db1ce5691cf14d6bb1b5b6`. **NO-GO for release:**
+manual website accessibility and the dependency vulnerability audit remain open.
+See [release verification](release-verification.md) for evidence, fixes and next actions.
+Historical counts and tool versions below describe their original runs, not the
+current checkpoint. Runtime discovery is distinct from hook enforcement.
+
 ## Checked by automated tests (every CI run)
 
 - CLI, security, privacy, install and uninstall, hooks (recorded payloads for each platform), agent identities and the website: `npm run test:cli`.

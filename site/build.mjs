@@ -74,7 +74,7 @@ function markdown(src, { shift = 0 } = {}) {
   }
   return html.join('\n')
 }
-const DOC_NAMES = ['verification', 'agent-names', 'cli', 'configuration', 'ci', 'troubleshooting', 'limitations', 'migration']
+const DOC_NAMES = ['verification', 'release-verification', 'agent-names', 'cli', 'configuration', 'ci', 'troubleshooting', 'limitations', 'migration']
 const doc = name => readFileSync(path.join(root, name), 'utf8').replace(/\r\n?/g, '\n')
 
 // ---- layout ------------------------------------------------------------------------------------
@@ -86,6 +86,7 @@ const NAV = [
 const DOCS = [
   ['agent-names', 'Agent names'], ['cli', 'CLI reference'], ['configuration', 'Configuration'], ['ci', 'Continuous integration'],
   ['troubleshooting', 'Troubleshooting'], ['limitations', 'Known limitations'], ['verification', 'Verification'], ['migration', 'Migrating from 0.1'],
+  ['release-verification', '2.0 release verification'],
 ]
 
 function page(file, title, body, { description, filter } = {}) {

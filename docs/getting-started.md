@@ -22,6 +22,14 @@ npx one-small-modspack init
 
 ## Install for your tools
 
+Once the package is published, install it in the target project first. Hooks use
+`npx --no-install modspack`, so a one-off `npx one-small-modspack init` does not
+provide the local executable the hooks need.
+
+```text
+npm install --save-dev one-small-modspack
+```
+
 ```text
 npx one-small-modspack init --platform codex --yes
 npx one-small-modspack init --platform copilot,gemini --yes
@@ -29,6 +37,11 @@ npx one-small-modspack init --platform claude-code --yes
 ```
 
 The package is not published to npm yet, so until it is, run it from a clone: `npm ci && npm run build && node dist/modspack.mjs init`.
+
+For a pre-release integration test, run `npm pack` in the clone, then install the
+resulting `.tgz` in a disposable project with `npm install --save-dev <path-to-tgz>`.
+Run `npx --no-install modspack init --platform codex --yes` there. This exercises
+the shipped package and gives its hooks a local executable without publishing.
 
 For Claude Code you can also install the mods as plugins from the `guardrail-mods` marketplace. See the repository README.
 
