@@ -25,8 +25,17 @@
 
 - Windows (found by a native Windows CI job): `npm`, `pnpm`, `yarn` and `eslint` are command shims there, so the quality and package gates reported "could not run npm: spawn ENOENT"; they now run npm through node and other shims only with shell-safe arguments. Skill file links were reported missing because of backslash separators, and CRLF checkouts broke front matter and the site's tables; paths are normalised and line endings are read as LF, and `.gitattributes` keeps checkouts LF.
 
+### Mod versions
+Claude Code updates an installed plugin only when its version changes, so the mods whose hook code changed since 0.1.0 (argument narrowing, Windows path handling, the `secret-scrubber` backtracking fix) are bumped.
+- `design-guardrail` 0.1.1
+- `qa-gate` 0.1.1
+- `secret-scrubber` 0.1.1
+- `wcag-enforcer` 0.1.1
+- `privacy-guard` 2.0.0
+- `modspack-agents` 2.0.0
+
 ### Known limitations
-See the Known limitations page. Codex, Copilot and Gemini runtime is NOT TESTED.
+See the Known limitations page. Codex has live evidence for instruction and skill discovery only; hook enforcement on Codex and all Copilot and Gemini CLI runtime are NOT TESTED.
 
 ## 0.1.0
 The four Claude Code mods (each 0.1.0) and the `guardrail-mods` marketplace.

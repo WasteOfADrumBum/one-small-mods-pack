@@ -1,6 +1,6 @@
 {
   "name": "secret-scrubber",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Redacts API keys, tokens, passwords, .env values and private keys from tool output, subagent output and @-mentioned files before Claude reads them, and counts the redactions in the status line.",
   "author": {
     "name": "Joshua Small"

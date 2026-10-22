@@ -19,7 +19,7 @@ npx one-small-modspack release-check  # READY or NOT READY, with the steps to ge
 
 The package is not published to npm. From a clone: `npm ci && npm run build && node dist/modspack.mjs --help`.
 
-**What it is not.** It does not certify HIPAA, WCAG or any other compliance, and its HIPAA-related review marks organisational safeguards NOT ASSESSED. Platform support is stated per capability in [`catalog/compatibility.json`](catalog/compatibility.json); runtime on Codex, Copilot and Gemini CLI is NOT TESTED in this release. See [known limitations](docs/limitations.md). Update with `modspack init`, remove with `modspack uninstall --yes`; see [getting started](docs/getting-started.md), [configuration](docs/configuration.md), [CI](docs/ci.md), [troubleshooting](docs/troubleshooting.md) and [migration](docs/migration.md).
+**What it is not.** It does not certify HIPAA, WCAG or any other compliance, and its HIPAA-related review marks organisational safeguards NOT ASSESSED. Platform support is stated per capability in [`catalog/compatibility.json`](catalog/compatibility.json); Codex has live evidence for instruction and skill discovery only; hook enforcement on Codex and all Copilot and Gemini CLI runtime are NOT TESTED in this release. See [known limitations](docs/limitations.md). Update with `modspack init`, remove with `modspack uninstall --yes`; see [getting started](docs/getting-started.md), [configuration](docs/configuration.md), [CI](docs/ci.md), [troubleshooting](docs/troubleshooting.md) and [migration](docs/migration.md).
 
 ---
 
