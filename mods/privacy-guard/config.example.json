@@ -1,0 +1,9 @@
+{
+  "enabled": true,
+  "mode": "block",
+  "blockAt": "high",
+  "noteAt": "medium",
+  "publicContacts": ["support@yourcompany.com", "+1 800 555 0100"],
+  "allowDomains": ["yourcompany.com"],
+  "ignore": ["docs/legal/**"]
+}

@@ -1,6 +1,6 @@
 {
   "name": "qa-gate",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "When Claude tries to finish a turn after editing code, runs the project's lint, type check, spell check and test scripts from package.json, and keeps Claude working until they pass. Scripts that don't exist are skipped.",
   "author": {
     "name": "Joshua Small"

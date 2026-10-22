@@ -26,9 +26,11 @@ const looksLikeSecretValue = (value: string): boolean => {
 }
 
 // Names that mark the value beside them as a secret in key=value, key: value
-// and "key": "value" forms, including .env lines and JSON.
+// and "key": "value" forms, including .env lines and JSON. The runs around the
+// keyword are bounded: unbounded they backtrack quadratically on a long
+// alphanumeric line (80,000 characters took 12 seconds).
 const SECRET_NAME =
-  String.raw`[A-Za-z0-9_.-]*(?:secret|passw(?:or)?d|pwd|token|api[_-]?key|apikey|access[_-]?key|private[_-]?key|client[_-]?secret|auth[_-]?key|credential|session[_-]?key|signing[_-]?key)[A-Za-z0-9_.-]*`
+  String.raw`[A-Za-z0-9_.-]{0,40}(?:secret|passw(?:or)?d|pwd|token|api[_-]?key|apikey|access[_-]?key|private[_-]?key|client[_-]?secret|auth[_-]?key|credential|session[_-]?key|signing[_-]?key)[A-Za-z0-9_.-]{0,40}`
 
 export const BUILTIN_RULES: readonly SecretRule[] = [
   {

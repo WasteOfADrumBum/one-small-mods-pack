@@ -1,17 +1,71 @@
 {
-  "name": "guardrail-mods",
-  "version": "0.1.0",
-  "private": true,
-  "description": "Claude Code mods that hold Claude to accessibility, design-token, quality and secret-handling rules.",
+  "name": "one-small-modspack",
+  "version": "2.0.0",
+  "description": "AI development agents, Agent Skills, quality and security guards, and release gates for Claude Code, OpenAI Codex, GitHub Copilot and Gemini CLI, with a deterministic CLI for CI.",
   "license": "MIT",
+  "author": "Joshua Small",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/WasteOfADrumBum/one-small-mods-pack.git"
+  },
+  "homepage": "https://github.com/WasteOfADrumBum/one-small-mods-pack#readme",
+  "bugs": {
+    "url": "https://github.com/WasteOfADrumBum/one-small-mods-pack/issues"
+  },
+  "keywords": [
+    "claude-code",
+    "codex",
+    "copilot",
+    "gemini-cli",
+    "agent-skills",
+    "ai-agents",
+    "security",
+    "privacy",
+    "accessibility",
+    "release"
+  ],
+  "type": "module",
+  "bin": {
+    "modspack": "dist/modspack.mjs"
+  },
+  "files": [
+    "dist/modspack.mjs",
+    ".claude-plugin/marketplace.json",
+    "mods/*/.claude-plugin/plugin.json",
+    "mods/*/hooks/**",
+    "mods/*/scripts/**",
+    "mods/*/config.example.json",
+    "mods/modspack-agents/agents/**",
+    "mods/modspack-agents/identities.json",
+    "mods/modspack-agents/skills/**",
+    "catalog/**",
+    "schema/**",
+    "CHANGELOG.md",
+    "docs/**"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
   "scripts": {
+    "build": "node scripts/build.mjs",
     "types": "node scripts/link-types.mjs",
     "typecheck": "tsc -p .",
-    "validate": "claude plugin validate . && for mod in mods/*/; do claude plugin validate \"$mod\" || exit 1; done",
-    "test": "for mod in mods/*/; do claude plugin test \"$mod\" || exit 1; done",
-    "check": "npm run typecheck && npm run validate && npm test"
+    "typecheck:cli": "tsc -p tsconfig.cli.json",
+    "shared": "node scripts/check-shared.mjs",
+    "validate": "node scripts/run-mods.mjs validate",
+    "test": "node scripts/run-mods.mjs test",
+    "test:cli": "npm run build && node --test test/*.test.mjs",
+    "site": "npm run build && node site/build.mjs",
+    "check": "npm run shared && npm run typecheck:cli && npm run test:cli && npm run validate && npm test",
+    "prepack": "npm run build",
+    "test:all": "npm run shared && npm run test:cli && npm run validate && npm test",
+    "site:check": "npm run site && node scripts/site-browser-check.mjs"
   },
   "devDependencies": {
+    "@types/node": "^22.20.5",
+    "axe-core": "^4.14.0",
+    "esbuild": "^0.28.2",
+    "jsdom": "^30.1.3",
     "typescript": "^5.4.0"
   }
 }

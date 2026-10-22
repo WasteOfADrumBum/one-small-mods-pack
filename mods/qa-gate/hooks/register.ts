@@ -166,7 +166,9 @@ export const register: Register = (on, options) => {
   on('tool.call', { tool: ['Write', 'Edit', 'NotebookEdit'] }, async ($, e, next) => {
     const ran = await next(e)
     if (ran.deny !== undefined || ran.isError === true) return ran
-    const path = e.tool === 'NotebookEdit' ? e.notebook_path : e.tool === 'Write' || e.tool === 'Edit' ? e.file_path : ''
+    // Tool arguments arrive as JSON from the model: a path that is not a string is not a change to record.
+    const path = asString(e.tool === 'NotebookEdit' ? e.notebook_path : e.tool === 'Write' || e.tool === 'Edit' ? e.file_path : '')
+    if (path === undefined) return ran
     const settings = await load($, options)
     if (settings.codeExtensions.some(ext => path.toLowerCase().endsWith(ext))) changed.add(path)
     return ran
@@ -184,7 +186,8 @@ export const register: Register = (on, options) => {
     if (ran.deny !== undefined) return ran
     const after = before === undefined ? undefined : await dirtyFiles($, isCode)
     if (before !== undefined && after !== undefined) for (const file of changedFiles(before, after)) changed.add(file)
-    for (const write of bashWrites(e.command)) if (isCode(write.path)) changed.add(write.path)
+    const command = asString(e.command)
+    if (command !== undefined) for (const write of bashWrites(command)) if (isCode(write.path)) changed.add(write.path)
     return ran
   })
 

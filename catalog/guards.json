@@ -1,0 +1,135 @@
+[
+  {
+    "name": "wcag-enforcer",
+    "kind": "claude-mod",
+    "checks": "Automated WCAG 2.2 AA checks on UI files: eslint-plugin-jsx-a11y (or vuejs-accessibility) for components, axe-core in jsdom for HTML, and its own text contrast check for CSS, style attributes and JSX style objects.",
+    "runs": "After a Write, Edit or shell command changes a .tsx, .jsx, .html, .vue or .css file, and again when Claude tries to finish a turn with failures open.",
+    "effect": "blocks-or-advises",
+    "failure": "Each failure goes back to Claude with file, line and rule. With blockStopUntilFixed on, the turn is held at most twice in a row.",
+    "missingDependency": "A check whose tool is missing (ESLint without an a11y plugin, no axe-core/jsdom) is skipped and the status line keeps saying so, so it never reads as a pass.",
+    "configure": "/config options enabled, configFile, extensions, eslintCommand, blockStopUntilFixed; project file .claude/guardrail-mods/wcag-enforcer.json for the rest.",
+    "results": "A note in the tool result Claude reads, a status line count (♿ 2 WCAG failures in 2 files), a toast when it stops holding the turn.",
+    "troubleshooting": "If the status line says eslint not running, enable jsx-a11y in your ESLint config. If HTML is never checked, install axe-core and jsdom in the project. Static checks catch only part of WCAG; keyboard, focus and screen reader tests stay manual.",
+    "cli": "modspack accessibility",
+    "platforms": {
+      "claude-code": "Native (mod)",
+      "codex": "CLI/CI fallback: modspack accessibility",
+      "copilot": "CLI/CI fallback: modspack accessibility",
+      "gemini": "CLI/CI fallback: modspack accessibility"
+    }
+  },
+  {
+    "name": "design-guardrail",
+    "kind": "claude-mod",
+    "checks": "Hardcoded hex/rgb/hsl colors, px spacing and font values, React style numbers and Tailwind arbitrary values in UI files, against the project's own tokens file (JSON, CSS, SCSS or Less).",
+    "runs": "Before a Write or Edit to a UI file; around shell commands (refuses direct shell writes to UI files, checks what other commands changed).",
+    "effect": "blocks",
+    "failure": "The write is refused with the token to use for each value. If the guard itself errors, the edit goes ahead (fails open).",
+    "missingDependency": "With no tokens file it stands aside and the status line says so.",
+    "configure": "/config options enabled, configFile, tokensFile, extensions, ignore, allow; project file .claude/guardrail-mods/design-guardrail.json.",
+    "results": "A refusal Claude reads, naming the token; a status line count.",
+    "troubleshooting": "Keep a value on purpose with a guardrail-ignore comment, or add it to allow. Projects without a design system simply have no tokens file and are left alone.",
+    "cli": "modspack check (design gate) and modspack hook for other tools",
+    "platforms": {
+      "claude-code": "Native (mod)",
+      "codex": "Partial: PreToolUse hook via modspack hook codex",
+      "copilot": "Partial: preToolUse hook via modspack hook copilot",
+      "gemini": "Partial: BeforeTool hook via modspack hook gemini"
+    }
+  },
+  {
+    "name": "qa-gate",
+    "kind": "claude-mod",
+    "checks": "Runs the project's lint, type check, spell check and test scripts from package.json (whichever exist) with CI=true.",
+    "runs": "When Claude tries to finish a turn after changing code by any tool, the shell included.",
+    "effect": "blocks",
+    "failure": "Claude is kept working with the failing output, at most maxAttempts times in a row (3 by default). Scripts over timeoutSeconds are stopped and reported.",
+    "missingDependency": "A check with no script is skipped and named in the status line. npm's placeholder test script is never run. In modspack check, a check listed under quality.required with no script is BLOCKED.",
+    "configure": "/config options enabled, configFile, packageJson, packageManager, maxAttempts, scope, timeoutSeconds; project file .claude/guardrail-mods/qa-gate.json.",
+    "results": "A hold message with each failing check's tail, a status line (✅ qa-gate: 3/3 passed · no spellcheck script).",
+    "troubleshooting": "Long suites: raise timeoutSeconds or set scope to changed. Wrong package manager: set packageManager.",
+    "cli": "modspack check",
+    "platforms": {
+      "claude-code": "Native (mod)",
+      "codex": "CLI/CI fallback: modspack check",
+      "copilot": "CLI/CI fallback: modspack check",
+      "gemini": "CLI/CI fallback: modspack check"
+    }
+  },
+  {
+    "name": "secret-scrubber",
+    "kind": "claude-mod",
+    "checks": "API keys and tokens (GitHub, Google, AWS, Vercel, Todoist, Slack, Stripe, Anthropic, OpenAI), JWTs, bearer tokens, private key blocks, URL credentials, generic password/secret pairs and every value of a .env file.",
+    "runs": "On every tool result before it is stored (main conversation and subagents) and on every attachment (@-mentioned files, changed-file notices).",
+    "effect": "redacts",
+    "failure": "Fails closed: if scrubbing errors, Claude gets a placeholder instead of the output.",
+    "missingDependency": "Needs nothing.",
+    "configure": "/config options enabled, configFile, patternsFile, showToast; project file .claude/guardrail-mods/secret-scrubber.json (disabledRules, patterns).",
+    "results": "[REDACTED:<rule>] in what Claude reads, a status line count, an optional toast. The original value is never logged.",
+    "troubleshooting": "A false positive: disable that rule by name. A missed format: add a pattern. Your terminal still shows real output; only Claude's copy is scrubbed.",
+    "cli": "modspack security (finds committed secrets; the same rules)",
+    "platforms": {
+      "claude-code": "Native (mod)",
+      "codex": "Unsupported natively (no hook rewrites tool output); modspack security in CI finds committed secrets",
+      "copilot": "Unsupported natively; modspack security in CI",
+      "gemini": "Unsupported natively; modspack security in CI"
+    }
+  },
+  {
+    "name": "privacy-guard",
+    "kind": "claude-mod",
+    "checks": "Real-looking personal and health data in content Claude writes: SSNs, Luhn-valid payment cards, IBANs, labelled dates of birth and government ids, medical record numbers, health insurance ids, named people beside diagnoses. Published test values and example.com addresses pass.",
+    "runs": "Before a Write or Edit; only the values the edit adds count.",
+    "effect": "blocks-or-advises",
+    "failure": "High-severity values are refused with masked evidence; medium ones come back as a note. Values in test paths step down one level for review.",
+    "missingDependency": "Needs nothing.",
+    "configure": "/config options enabled, configFile, mode, publicContacts, ignore; project file .claude/guardrail-mods/privacy-guard.json (blockAt, noteAt, allowDomains).",
+    "results": "A refusal or note with kind, line, severity and length only; never the value.",
+    "troubleshooting": "Public contact details: list them under publicContacts or mark the line privacy-ignore. Shell writes are not checked by the mod; modspack privacy covers them in CI.",
+    "cli": "modspack privacy",
+    "platforms": {
+      "claude-code": "Native (mod)",
+      "codex": "Partial: PreToolUse hook via modspack hook codex",
+      "copilot": "Partial: preToolUse hook via modspack hook copilot",
+      "gemini": "Partial: BeforeTool hook via modspack hook gemini"
+    }
+  },
+  {
+    "name": "security-scan",
+    "kind": "cli-check",
+    "checks": "Committed secrets (working tree and git history), personal and health data, tracked .env files, risky GitHub Actions workflows, risky package install scripts, client-exposed secret environment variables, public source maps and debug files; optional dependency audit and gitleaks/osv-scanner when installed.",
+    "runs": "modspack security, modspack release-check, and in CI.",
+    "effect": "blocks",
+    "failure": "Exit 1 when a confirmed finding at or above security.failOn (high by default) is open; exit 3 when a required scan could not run.",
+    "missingDependency": "Optional scanners that are not installed are SKIPPED and listed; nothing is downloaded.",
+    "configure": "modspack.config.json: security.failOn, security.history, security.dependencyAudit, security.externalScanners, security.accepted, exclude.",
+    "results": "Markdown or JSON report with finding id, category, severity, confidence, path, line, masked evidence, remediation, release impact.",
+    "troubleshooting": "Dismiss a false positive by adding its fingerprint to security.accepted with a reason; an accepted risk also needs approvedBy.",
+    "cli": "modspack security",
+    "platforms": {
+      "claude-code": "CLI/CI",
+      "codex": "CLI/CI",
+      "copilot": "CLI/CI",
+      "gemini": "CLI/CI"
+    }
+  },
+  {
+    "name": "release-gate",
+    "kind": "cli-check",
+    "checks": "Runs every required gate (quality, security, privacy, accessibility, package by default) and returns READY only when each one PASSES.",
+    "runs": "modspack release-check, locally or in CI.",
+    "effect": "blocks",
+    "failure": "NOT READY with the failed, blocked or unverified gates listed, exit 1 (or 3 when a gate could not run).",
+    "missingDependency": "A gate that cannot run is BLOCKED, which is never READY.",
+    "configure": "modspack.config.json: release.requiredGates, mode.",
+    "results": "A release readiness report with each gate's evidence and the minimum steps to READY.",
+    "troubleshooting": "Read the BLOCKED lines first: they name the missing script or tool.",
+    "cli": "modspack release-check",
+    "platforms": {
+      "claude-code": "CLI/CI",
+      "codex": "CLI/CI",
+      "copilot": "CLI/CI",
+      "gemini": "CLI/CI"
+    }
+  }
+]

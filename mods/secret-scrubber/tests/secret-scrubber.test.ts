@@ -14,6 +14,20 @@ const TODOIST = '0123456789abcdef' + '0123456789abcdef01234567'
 const VERCEL = 'Ab3dEf6hIj9kLm2nOp5qRs8t'
 const KEY_BLOCK = ['-----BEGIN RSA ' + 'PRIVATE KEY-----', 'MIIEowIBAAKCAQEAx', '-----END RSA ' + 'PRIVATE KEY-----'].join('\n')
 
+describe('scrub on hostile input', () => {
+  test('a long alphanumeric line scrubs in linear time', () => {
+    const started = Date.now()
+    const out = scrub('a'.repeat(200_000), BUILTIN_RULES)
+    expect(out.count).toBe(0)
+    expect(Date.now() - started).toBeLessThan(2000)
+  })
+
+  test('still redacts a secret named with a long prefix and suffix', () => {
+    const out = scrub('my_service_prod_database_password_value=Xk9mQ2vL8nR4tZ7w', BUILTIN_RULES)
+    expect(out.kinds).toEqual(['generic-secret'])
+  })
+})
+
 describe('scrub', () => {
   test('redacts each provider token by name', () => {
     const cases: [string, string][] = [
@@ -207,4 +221,33 @@ test('leaves a clean attachment as it was', async ($, on) => {
   const out = await $.prompt.attachment({ type: 'todo_reminder', text: 'Remember the todo list.', origin: { kind: 'engine' } })
 
   expect(out.text).toBe('Remember the todo list.')
+})
+
+// Tool arguments come from the model as JSON, so they can be any type. The call is built from text to
+// stay as untyped as it is on the wire.
+const wire = (tool: string, args: Record<string, unknown>) => JSON.stringify({ tool, ...args })
+
+describe('malformed tool arguments', () => {
+  test('does not throw on a Read path or Bash command that is not a string, and scrubs the output as usual', async ($, on) => {
+    stubEngine(on)
+    const session = mock.session(on)
+
+    for (const [i, bad] of [undefined, 42, null, ['.env'], { path: '.env' }].entries()) {
+      await $.tool.call(JSON.parse(wire('Read', { file_path: bad, tool_use_id: `r${i}` })))
+      await $.tool.call(JSON.parse(wire('Bash', { command: bad, tool_use_id: `b${i}` })))
+    }
+    await $.session.append(toolResult('r0', `export GITHUB_TOKEN=${GITHUB}`))
+
+    expect(firstResult(session.appended())).toBe('export GITHUB_TOKEN=[REDACTED:github-token]')
+  })
+
+  test('does not treat a non-string path as a .env file', async ($, on) => {
+    stubEngine(on)
+    const session = mock.session(on)
+
+    await $.tool.call(JSON.parse(wire('Read', { file_path: 42, tool_use_id: 'r9' })))
+    await $.session.append(toolResult('r9', 'PORT=3000'))
+
+    expect(firstResult(session.appended())).toBe('PORT=3000')
+  })
 })
