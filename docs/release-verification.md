@@ -1,7 +1,18 @@
 # 2.0 pre-release verification
 
-Checkpoint: 2026-10-22, America/New_York (third pass, on top of `0c3bb56`; earlier passes 2026-10-21 on `1c372fa` and `559d010`). **NO-GO for release** until the manual items below are done.
+Checkpoint: 2026-10-22, America/New_York (third pass, on top of `0c3bb56`; earlier passes 2026-10-21 on `1c372fa` and `559d010`). **NO-GO for release** until the manual items below are done or an explicit scope decision defers them; the owner deferred the manual items on 2026-10-29 (see Scope decision), so website deployment and publishing remain NO-GO.
 No merge, tag, npm publication or deployment was performed.
+
+## Scope decision (2026-10-29, owner)
+
+The owner postponed the manual testing and asked to finish the work. Nothing below was run or marked passed because of that. The deferred items stay NOT TESTED in the table:
+
+- Screen reader review (NVDA, Narrator, VoiceOver), real browser zoom, text spacing and Windows High Contrast, and a human keyboard and table-scrolling pass over the website.
+- Interactive `/hooks` trust confirmation in Codex.
+- Copilot and Gemini runtime enforcement and custom agents (not installed or authenticated where this was verified); these integrations stay documented as unverified.
+- Plugin icon artwork (deferred; needed only for directory submission).
+
+All automated work is complete and CI is green (cli, mods, windows). What the deferral changes: the code can be reviewed and merged on its automated evidence. The **website must not be deployed, and the npm package must not be published or described as accessibility-verified, until the manual accessibility items are done.** The merge, the tag, the publication and the deployment each still need the owner's explicit authorization, and npm ownership and access must be confirmed immediately before publishing.
 
 ## Evidence and status
 
@@ -49,11 +60,11 @@ ModsPack dependency or recommended for new projects.
 - [x] Close the missing WCAG jsx-a11y automatic Edit path with actual runtime evidence.
 - [x] Preserve clear limits on Codex/Copilot/Gemini support; discovery alone does not prove enforcement.
 - [x] Automated keyboard, skip link, search and focus-visibility checks on the final generated site in two browsers. Manual table-scrolling walk-through remains.
-- [ ] Complete screen-reader headings/landmarks, search announcements and decorative-icon review with NVDA and a supported browser.
-- [ ] Complete actual 200%/400% browser zoom, text spacing and Windows forced-colors review; record browser/AT versions and results.
+- [ ] (postponed by owner 2026-10-29; blocks website deployment and any accessibility claim) Complete screen-reader headings/landmarks, search announcements and decorative-icon review with NVDA and a supported browser.
+- [ ] (postponed by owner 2026-10-29; same) Complete actual 200%/400% browser zoom, text spacing and Windows forced-colors review; record browser/AT versions and results.
 - [x] Obtain a successful `npm audit` response (0 vulnerabilities, 2026-10-22).
 - [x] Codex hook enforcement verified live with trust bypassed (2026-10-22); [ ] confirm once through interactive `/hooks` trust (manual), and Copilot/Gemini in installed authenticated runtimes; otherwise explicitly accept those integrations as experimental with unverified enforcement before release.
-- [ ] Choose icon artwork before any plugin-directory submission (first submitted icon is permanent), or explicitly defer directory listing. Not needed for local use.
+- [ ] Choose icon artwork before any plugin-directory submission (first submitted icon is permanent), or explicitly defer directory listing. Not needed for local use. (Deferred by owner 2026-10-29.)
 - [x] Package contents reviewed (82 files, listed above; rerun third pass).
 - [x] Plugin versions bumped where hook code changed, with a consistency test.
 - [x] Final PR CI on `9e79b0b`: cli, mods, windows all passed (run 39808719131).
