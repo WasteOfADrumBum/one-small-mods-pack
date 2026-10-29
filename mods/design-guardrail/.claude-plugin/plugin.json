@@ -1,6 +1,6 @@
 {
   "name": "design-guardrail",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Blocks Write and Edit on UI files that hardcode hex/rgb/hsl colors or px spacing and font values, and names the design token to use instead.",
   "author": {
     "name": "Joshua Small"

@@ -1,0 +1,8 @@
+{
+  "release-manager": { "name": "Atlas", "role": "Release Manager" },
+  "code-reviewer": { "name": "Sentinel", "role": "Code Reviewer" },
+  "qa-engineer": { "name": "Scout", "role": "QA Engineer" },
+  "accessibility-auditor": { "name": "Echo", "role": "Accessibility Auditor" },
+  "security-privacy-auditor": { "name": "Aegis", "role": "Security & Privacy Auditor" },
+  "release-engineer": { "name": "Forge", "role": "Release Engineer" }
+}

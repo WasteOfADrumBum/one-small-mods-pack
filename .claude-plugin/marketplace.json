@@ -2,7 +2,7 @@
   "name": "guardrail-mods",
   "owner": { "name": "Joshua Small" },
   "metadata": {
-    "description": "Claude Code mods that hold Claude to accessibility, design-token, quality and secret-handling rules."
+    "description": "Claude Code mods that hold Claude to accessibility, design-token, quality, secret-handling and privacy rules, plus the ModsPack agents and skills."
   },
   "plugins": [
     {
@@ -24,6 +24,16 @@
       "name": "secret-scrubber",
       "source": "./mods/secret-scrubber",
       "description": "Redacts keys, tokens, passwords, .env values and private keys from tool output before Claude reads it."
+    },
+    {
+      "name": "privacy-guard",
+      "source": "./mods/privacy-guard",
+      "description": "Blocks Write and Edit calls that add real-looking personal or health data (SSNs, payment cards, IBANs, medical record numbers, named people beside diagnoses), with notes for lower-severity values."
+    },
+    {
+      "name": "modspack-agents",
+      "source": "./mods/modspack-agents",
+      "description": "Six specialist agents (release manager, code reviewer, QA engineer, accessibility auditor, security and privacy auditor, release engineer) and the shared Agent Skills behind them."
     }
   ]
 }

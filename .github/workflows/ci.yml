@@ -1,0 +1,75 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  # Needs no AI tool: this is the same check a downstream project runs.
+  cli:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx tsc -p tsconfig.cli.json
+      - run: npm run shared
+      - run: npm run test:cli
+      - run: npm pack --dry-run
+
+  # The mods need the Claude Code harness (plugin validate / plugin test).
+  # Pin the version so a new release cannot change results silently.
+  mods:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm install --global @anthropic-ai/claude-code@2.1.304
+      - run: npm run validate
+      - run: npm test
+
+  # Native Windows: the repository scripts and the shipped CLI must find their own files.
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+      - run: node --test --test-timeout=120000 test/link-types.test.mjs
+      - run: node dist/modspack.mjs validate
+      - run: node dist/modspack.mjs agents
+      - run: node --test --test-timeout=180000 test/*.test.mjs
+      - name: link-types locates the repository (no declarations exist here, so it exits 1 with its own message and never ENOENT)
+        shell: pwsh
+        run: |
+          $out = (node scripts/link-types.mjs 2>&1 | Out-String)
+          Write-Host $out
+          if ($out -match 'ENOENT') { exit 1 }
+          if ($out -notmatch 'No Claude Code type declarations found') { exit 1 }
+          # The script's own exit 1 is the expected result here; do not let it fail the step.
+          exit 0
+      - name: npm run validate parses in Windows' npm shell (Claude Code is not installed here, so it must report BLOCKED, exit 3)
+        shell: pwsh
+        run: |
+          $out = (npm run validate 2>&1 | Out-String)
+          Write-Host $out
+          if ($out -match 'unexpected at this time') { exit 1 }
+          if ($out -notmatch 'BLOCKED') { exit 1 }
+          exit 0

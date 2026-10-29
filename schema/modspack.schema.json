@@ -1,0 +1,167 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/WasteOfADrumBum/one-small-mods-pack/schema/modspack.schema.json",
+  "title": "ModsPack project configuration",
+  "description": "modspack.config.json at the project root. Every key is optional; the defaults are listed in each description.",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "$schema": { "type": "string" },
+    "mode": {
+      "description": "enforce (default): failed gates exit non-zero. advisory: report only, always exit 0 unless a check could not run and is required.",
+      "enum": ["enforce", "advisory"]
+    },
+    "adapters": {
+      "description": "AI tools to install integrations for. Default: the ones detected in the project, else all four.",
+      "type": "array",
+      "items": { "enum": ["claude-code", "codex", "copilot", "gemini"] }
+    },
+    "skills": {
+      "description": "Skills to install. Default: every shipped skill.",
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "agents": {
+      "description": "Agents to install. Default: every shipped agent.",
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "agentNames": {
+      "description": "Display names for agents, by technical ID, for example {\"release-manager\": \"Atlas\"}. Only the display name changes; the ID, instructions, tools and files do not. Names are unique, start with a letter, and use letters, digits, spaces and hyphens (at most 32 characters).",
+      "type": "object",
+      "additionalProperties": { "type": "string" }
+    },
+    "exclude": {
+      "description": "Globs no scan reads (added to the built-in node_modules, .git, dist, build, coverage).",
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "guards": {
+      "description": "Turns each deterministic check on or off for modspack check and release-check.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "quality": { "type": "boolean" },
+        "security": { "type": "boolean" },
+        "privacy": { "type": "boolean" },
+        "accessibility": { "type": "boolean" },
+        "design": { "type": "boolean" }
+      }
+    },
+    "security": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "failOn": {
+          "description": "Lowest severity of a confirmed finding that fails the gate. Default: high.",
+          "enum": ["critical", "high", "medium", "low"]
+        },
+        "history": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "enabled": { "description": "Scan git history for secrets. Default: true.", "type": "boolean" },
+            "maxCommits": { "description": "Commits scanned, newest first. Default: 200.", "type": "number", "minimum": 1, "maximum": 100000 }
+          }
+        },
+        "dependencyAudit": {
+          "description": "Run the package manager's audit (sends the dependency list to the registry). Default: false.",
+          "type": "boolean"
+        },
+        "externalScanners": {
+          "description": "Run gitleaks or osv-scanner when installed locally. Default: true. Nothing is downloaded.",
+          "type": "boolean"
+        },
+        "accepted": {
+          "description": "Findings dismissed or accepted on purpose. Each needs a reason; accepted risks also need approvedBy.",
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["fingerprint", "reason"],
+            "properties": {
+              "fingerprint": { "type": "string" },
+              "reason": { "type": "string" },
+              "kind": { "enum": ["false-positive", "accepted-risk"] },
+              "approvedBy": { "type": "string" }
+            }
+          }
+        }
+      }
+    },
+    "privacy": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "hipaa": {
+          "description": "auto (default): deeper HIPAA-related review when health-data signals are found. on: always. off: never.",
+          "enum": ["auto", "on", "off"]
+        },
+        "publicContacts": {
+          "description": "Email addresses and phone numbers that are meant to be public (support@, the press line).",
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "allowDomains": {
+          "description": "Email domains never flagged. example.com, example.org, example.net and test are always allowed.",
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      }
+    },
+    "design": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "tokensFile": { "description": "Default: design-tokens.json, or tokensFile in .claude/guardrail-mods/design-guardrail.json.", "type": "string" },
+        "allow": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "quality": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "required": {
+          "description": "Checks that must have a script. A required check with no script is BLOCKED, never passed. Default: [].",
+          "type": "array",
+          "items": { "enum": ["lint", "typecheck", "spellcheck", "test", "build"] }
+        },
+        "scripts": {
+          "description": "Script names per check, first match wins (as qa-gate's scripts option).",
+          "type": "object",
+          "additionalProperties": { "type": "array", "items": { "type": "string" } }
+        },
+        "timeoutSeconds": { "type": "number", "minimum": 10, "maximum": 7200 }
+      }
+    },
+    "accessibility": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "required": {
+          "description": "When true, a project with UI files but no axe-core/jsdom is BLOCKED rather than SKIPPED. Default: false.",
+          "type": "boolean"
+        },
+        "paths": { "description": "Globs of files to check. Default: every .html, .css, .tsx, .jsx, .vue file.", "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "release": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "requiredGates": {
+          "description": "Gates that must PASS for release-check to say READY. Default: quality, security, privacy, accessibility, package.",
+          "type": "array",
+          "items": { "enum": ["quality", "security", "privacy", "accessibility", "design", "package"] }
+        }
+      }
+    },
+    "report": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "dir": { "description": "Where --write puts reports. Default: .modspack/reports. Add it to .gitignore.", "type": "string" }
+      }
+    }
+  }
+}

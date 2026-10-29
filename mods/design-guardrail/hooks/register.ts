@@ -131,24 +131,29 @@ const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`
 export const register: Register = (on, options) => {
   on('tool.call', { tool: ['Write', 'Edit'] }, async ($, e, next) => {
     if (e.tool !== 'Write' && e.tool !== 'Edit') return next(e)
+    // Tool arguments arrive as JSON from the model: use only what really is a string. A call without a
+    // string path cannot write a file; the tool rejects it itself, so it passes through unchanged.
+    const filePath = asString(e.file_path)
+    if (filePath === undefined) return next(e)
     const settings = await load($, options)
-    if (!settings.enabled || !isGuarded(settings, e.file_path)) return next(e)
+    if (!settings.enabled || !isGuarded(settings, filePath)) return next(e)
 
     const tokens = await readTokens($, settings.tokensFile)
     if (tokens === undefined) return next(e)
 
-    const path = normalizePath(e.file_path)
-    const existing = await currentText($, e.file_path)
+    const path = normalizePath(filePath)
+    const existing = await currentText($, filePath)
     let added: string
     let before: string
     let lineOffset = 0
     if (e.tool === 'Write') {
-      added = e.content
+      added = asString(e.content) ?? ''
       before = existing
     } else {
-      added = e.new_string
-      before = e.old_string
-      const at = existing.indexOf(e.old_string)
+      const oldText = asString(e.old_string) ?? ''
+      added = asString(e.new_string) ?? ''
+      before = oldText
+      const at = existing.indexOf(oldText)
       if (at >= 0) lineOffset = existing.slice(0, at).split('\n').length - 1
     }
 
@@ -164,7 +169,7 @@ export const register: Register = (on, options) => {
     $.ui.status(`🎨 design-guardrail blocked ${plural(violations.length, 'hardcoded value')}`)
     return {
       deny: [
-        `design-guardrail: this ${e.tool} to ${e.file_path} hardcodes ${plural(violations.length, 'value')} that should be design tokens (from ${settings.tokensFile}):`,
+        `design-guardrail: this ${e.tool} to ${filePath} hardcodes ${plural(violations.length, 'value')} that should be design tokens (from ${settings.tokensFile}):`,
         ...shown.map(v => explain(v, tokens, lineOffset)),
         ...(more > 0 ? [`- …and ${more} more.`] : []),
         'Replace each with the token named and retry. A value that truly must stay can be kept with a `guardrail-ignore` comment on its line.',
@@ -179,7 +184,9 @@ export const register: Register = (on, options) => {
     const settings = await load($, options)
     if (!settings.enabled) return next(e)
 
-    const named = bashWrites(e.command).filter(w => isGuarded(settings, w.path))
+    const command = asString(e.command)
+    if (command === undefined) return next(e)
+    const named = bashWrites(command).filter(w => isGuarded(settings, w.path))
     const writing = named.filter(w => w.via !== 'copy')
     if (settings.blockBashWrites && writing.length > 0) {
       $.ui.status('🎨 design-guardrail blocked a shell write to a UI file')

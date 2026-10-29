@@ -88,7 +88,9 @@ function stubEngine(on: On, stub: Stub) {
   const runs: string[][] = []
   const toasts: string[] = []
   const status: (string | undefined)[] = []
-  const find = (path: string) => Object.entries(stub.files ?? {}).find(([end]) => path.endsWith(end))?.[1]
+  // Paths compare with "/" whatever separator the engine hands over: on Windows it hands backslashes.
+  const slash = (p: string) => p.replace(/\\/g, '/')
+  const find = (path: string) => Object.entries(stub.files ?? {}).find(([end]) => slash(path).endsWith(slash(end)))?.[1]
   on('fs.exists', ($, e) => ({ value: find(e.path) !== undefined }))
   on('fs.read', ($, e) => ({ value: find(e.path) ?? '' }))
   on('fs.stat', ($, e) => ({ value: { kind: 'file' as const, size: 1, mtimeMs: stub.mtime?.() ?? 0, isLink: false, realPath: e.path } }))
@@ -253,4 +255,43 @@ test('leaves a shell command alone when it changes no UI file', async ($, on) =>
 
   expect(out).toEqual({ result: 'done' })
   expect(runs).toEqual([])
+})
+
+// Tool arguments come from the model as JSON, so they can be any type. The call is built from text to
+// stay as untyped as it is on the wire.
+const wire = (tool: string, args: Record<string, unknown>) => JSON.stringify({ tool, ...args })
+
+describe('malformed tool arguments', () => {
+  test('checks nothing for a Write or Edit without a string path, and does not throw', async ($, on) => {
+    const { runs, status } = stubEngine(on, { files: { 'Card.tsx': '<img src="a.png" />' }, eslint: ESLINT_HIT })
+
+    for (const bad of [undefined, 42, null, ['Card.tsx'], { path: 'Card.tsx' }]) {
+      const write = await $.tool.call(JSON.parse(wire('Write', { file_path: bad, content: 'x' })))
+      const edit = await $.tool.call(JSON.parse(wire('Edit', { file_path: bad, old_string: 'a', new_string: 'b' })))
+      expect(write.context ?? []).toEqual([])
+      expect(edit.context ?? []).toEqual([])
+    }
+
+    expect(runs).toEqual([])
+    expect(status).toEqual([])
+  })
+
+  test('ignores a Bash command that is not a string', async ($, on) => {
+    const { runs } = stubEngine(on, { files: {} })
+
+    for (const bad of [undefined, 42, null, ['ls']]) {
+      const out = await $.tool.call(JSON.parse(wire('Bash', { command: bad })))
+      expect(out.deny).toBeUndefined()
+    }
+
+    expect(runs).toEqual([])
+  })
+
+  test('still checks the same Edit once its path is a string', async ($, on) => {
+    stubEngine(on, { files: { 'Card.tsx': '<img src="a.png" />' }, eslint: ESLINT_HIT })
+
+    const out = await $.tool.call(JSON.parse(wire('Edit', { file_path: '/work/src/Card.tsx', old_string: 'a', new_string: 'b' })))
+
+    expect(out.context?.[0]).toContain('jsx-a11y/alt-text')
+  })
 })

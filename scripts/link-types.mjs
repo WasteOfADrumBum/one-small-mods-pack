@@ -10,8 +10,9 @@
 // The declarations are Anthropic's and are not redistributed in this repo.
 import { copyFileSync, existsSync, mkdirSync, readdirSync, readFileSync } from 'node:fs'
 import path from 'node:path'
+import { projectRoot } from './root.mjs'
 
-const root = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..')
+const root = projectRoot(import.meta.url)
 const target = path.join(root, 'types', 'claude-code.d.ts')
 
 const candidates = process.argv[2]
@@ -23,8 +24,11 @@ const candidates = process.argv[2]
 const source = candidates.find(existsSync)
 if (source === undefined) {
   console.error(
-    'No Claude Code type declarations found. Start `claude --plugin-dir mods/qa-gate` once so Claude Code writes them,\n' +
-      'or pass the path of a claude-code.d.ts: node scripts/link-types.mjs <file>',
+    'No Claude Code type declarations found. Claude Code writes them in two cases:\n' +
+      '  1. when it loads a mod: start `claude --plugin-dir mods/qa-gate` once (needs mods enabled in your account);\n' +
+      '  2. when its bundled plugin-authoring skill loads: ask Claude Code to use that skill; the skill text names the\n' +
+      '     claude-code.d.ts it just wrote.\n' +
+      'Then pass that file: node scripts/link-types.mjs <path to claude-code.d.ts>',
   )
   process.exit(1)
 }
