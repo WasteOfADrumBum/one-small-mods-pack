@@ -1,7 +1,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { execFileSync } from 'node:child_process'
-import { readdirSync, existsSync } from 'node:fs'
+import { readdirSync, existsSync, readFileSync } from 'node:fs'
 import path from 'node:path'
 import { npmCli } from '../dist/lib.mjs'
 import { ROOT, project } from './helpers.mjs'
@@ -28,6 +28,9 @@ test('npm artifact: the installed tarball validates and installs all platform de
     }
     assert.ok(onDisk.length >= 20, 'expected to find the guard mods hook modules on disk')
     assert.deepEqual(onDisk.filter(f => !shipped.has(f)), [], 'hook/script runtime files missing from the tarball')
+    // The release workflow refuses a tarball whose file list differs from release/package-files.txt.
+    const expected = readFileSync(path.join(ROOT, 'release', 'package-files.txt'), 'utf8').split(/\r?\n/).filter(Boolean).sort()
+    assert.deepEqual([...shipped].sort(), expected, 'release/package-files.txt is out of date: regenerate it from npm pack --dry-run --json')
     runNpm(['install', '--ignore-scripts', '--no-audit', '--no-fund', path.join(p.dir, packed.filename)], p.dir)
     const entry = path.join(p.dir, 'node_modules', 'one-small-modspack', 'dist', 'modspack.mjs')
     const run = args => execFileSync(process.execPath, [entry, ...args], { cwd: p.dir, encoding: 'utf8', timeout: 30_000 })

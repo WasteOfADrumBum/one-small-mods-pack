@@ -25,6 +25,60 @@ jobs:
       - run: npm run shared
       - run: npm run test:cli
       - run: npm pack --dry-run
+      # The real artifact, installed in a throwaway project and driven through its bin.
+      - run: node scripts/consumer-smoke.mjs
+
+  # engines says node >=20: the shipped CLI must work on every supported major, and macOS.
+  # Node 20 cannot load the dev-only site tests (jsdom needs ^22.22.2 || ^24.15.0 || >=26),
+  # so there they are excluded and the runtime is proven by the packed-artifact smoke test.
+  node-compat:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { os: ubuntu-latest, node: 20 }
+          - { os: ubuntu-latest, node: 24 }
+          - { os: macos-latest, node: 22 }
+    runs-on: ${{ matrix.os }}
+    name: node-compat (${{ matrix.os }}, node ${{ matrix.node }})
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+      - name: CLI tests (site tests excluded on Node 20)
+        shell: bash
+        run: |
+          if [ "${{ matrix.node }}" = "20" ]; then
+            node --test $(ls test/*.test.mjs | grep -v site.test.mjs)
+          else
+            node --test test/*.test.mjs
+          fi
+      - run: node scripts/consumer-smoke.mjs
+
+  # Real-browser accessibility automation of the generated site (axe in light and dark, reflow at
+  # 200%/400%-equivalent widths, text spacing, emulated forced colors, keyboard, search).
+  # This is automation only; the manual checks in release/2.0.0/manual-acceptance.md stay manual.
+  site:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm install --global playwright@1
+      - run: npx playwright install --with-deps chromium
+      - run: npm run site:check
+      - uses: actions/upload-artifact@v4
+        with:
+          name: site-dist
+          path: site/dist
+          retention-days: 14
 
   # The mods need the Claude Code harness (plugin validate / plugin test).
   # Pin the version so a new release cannot change results silently.
@@ -56,6 +110,7 @@ jobs:
       - run: node dist/modspack.mjs validate
       - run: node dist/modspack.mjs agents
       - run: node --test --test-timeout=180000 test/*.test.mjs
+      - run: node scripts/consumer-smoke.mjs
       - name: link-types locates the repository (no declarations exist here, so it exits 1 with its own message and never ENOENT)
         shell: pwsh
         run: |

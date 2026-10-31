@@ -27,6 +27,8 @@ In a project set up by `modspack init` (2026-10-20):
 | Gemini CLI 0.64.0 | `gemini skills list` (trusted workspace) | PASS: 12 skills Enabled from `.agents/skills` |
 | Copilot CLI 1.0.100 | `copilot skill list` | PASS: 12 project skills listed |
 
+Rechecked 2026-10-31 on Linux from the packed tarball: Codex 0.166.0 `debug prompt-input` (block, 12 skills, six agent names), Copilot CLI 1.0.105 `copilot skill list` (12) and `copilot instruction list` (AGENTS.md), Gemini CLI 0.66.0 `gemini skills list` (12 in a trusted folder; none, and project hooks disabled, in an untrusted one).
+
 These show discovery. Not covered: custom agent loading, a hook firing, a model following the instructions. Those need a login: NOT TESTED.
 
 ## Check the rest on your machine
