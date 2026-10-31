@@ -147,7 +147,7 @@ jobs:
         run: node scripts/consumer-smoke.mjs --tarball "artifact/${{ steps.pack.outputs.tarball }}"
 
       - name: npm publish --dry-run of the exact tarball
-        run: npm publish "artifact/${{ steps.pack.outputs.tarball }}" --dry-run --access public
+        run: npm publish "./artifact/${{ steps.pack.outputs.tarball }}" --dry-run --access public
 
       - uses: actions/upload-artifact@v4
         with:
@@ -222,7 +222,7 @@ jobs:
           # Put a granular token (publish, this package only, short expiry) in the npm-publish
           # environment as NPM_TOKEN, then delete it once trusted publishing is set up.
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-        run: npm publish "artifact/${{ needs.verify.outputs.tarball }}" --provenance --access public
+        run: npm publish "./artifact/${{ needs.verify.outputs.tarball }}" --provenance --access public
 
       - name: Confirm the registry serves it
         run: |
