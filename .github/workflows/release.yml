@@ -1,0 +1,234 @@
+name: Release (npm)
+
+# Manually started only. Fails closed: every gate below must pass, and the default mode is a dry
+# run that uploads nothing. Publishing additionally needs the repository owner as the actor, an
+# exact authorization phrase, a completed manual acceptance record at the candidate commit, and
+# approval of the `npm-publish` environment (configure a required reviewer there).
+#
+# This workflow never creates a git tag or a GitHub release; those stay owner actions
+# (see release/README.md).
+
+on:
+  workflow_dispatch:
+    inputs:
+      candidate_sha:
+        description: Full 40-character commit SHA to release (must be on main)
+        required: true
+        type: string
+      version:
+        description: Version to publish (must equal package.json at the candidate)
+        required: true
+        type: string
+      mode:
+        description: dry-run verifies and packs only; publish uploads to npm
+        required: true
+        default: dry-run
+        type: choice
+        options: [dry-run, publish]
+      authorization:
+        description: 'For publish, type exactly: I authorize publishing one-small-modspack@<version> from <candidate_sha>'
+        required: false
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-npm
+  cancel-in-progress: false
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      checks: read
+    outputs:
+      tarball: ${{ steps.pack.outputs.tarball }}
+      sha256: ${{ steps.pack.outputs.sha256 }}
+    steps:
+      - name: Inputs are well formed
+        env:
+          SHA: ${{ inputs.candidate_sha }}
+          VERSION: ${{ inputs.version }}
+        run: |
+          [[ "$SHA" =~ ^[0-9a-f]{40}$ ]] || { echo "::error::candidate_sha must be a full lowercase 40-character SHA"; exit 1; }
+          [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$ ]] || { echo "::error::version is not semver"; exit 1; }
+
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.candidate_sha }}
+          fetch-depth: 0
+
+      - name: Candidate is the checked-out commit and is on main
+        env:
+          SHA: ${{ inputs.candidate_sha }}
+        run: |
+          test "$(git rev-parse HEAD)" = "$SHA" || { echo "::error::checkout is not the candidate"; exit 1; }
+          git fetch --no-tags origin main
+          git merge-base --is-ancestor "$SHA" origin/main || { echo "::error::$SHA is not on main"; exit 1; }
+
+      - name: Version matches package.json, plugin manifests and changelog
+        env:
+          VERSION: ${{ inputs.version }}
+        run: |
+          test "$(node -p "require('./package.json').name")" = "one-small-modspack" || { echo "::error::unexpected package name"; exit 1; }
+          test "$(node -p "require('./package.json').version")" = "$VERSION" || { echo "::error::package.json version differs from $VERSION"; exit 1; }
+          grep -Eq "^## ${VERSION//./\\.}( |$)" CHANGELOG.md || { echo "::error::CHANGELOG.md has no heading for $VERSION"; exit 1; }
+
+      - name: Tag, if one exists, points at the candidate
+        env:
+          SHA: ${{ inputs.candidate_sha }}
+          VERSION: ${{ inputs.version }}
+        run: |
+          git fetch --tags --force origin
+          if git rev-parse -q --verify "refs/tags/v$VERSION" >/dev/null; then
+            test "$(git rev-list -n1 "v$VERSION")" = "$SHA" || { echo "::error::tag v$VERSION exists and points elsewhere"; exit 1; }
+          fi
+
+      - name: Required CI passed on the candidate
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SHA: ${{ inputs.candidate_sha }}
+        run: |
+          gh api --paginate "repos/${{ github.repository }}/commits/$SHA/check-runs?per_page=100" --jq '.check_runs[] | [.name, .status, (.conclusion // "none")] | @tsv' > checks.tsv
+          cat checks.tsv
+          for required in cli mods windows site "node-compat (ubuntu-latest, node 20)" "node-compat (ubuntu-latest, node 24)" "node-compat (macos-latest, node 22)"; do
+            awk -F'\t' -v n="$required" '$1==n && $2=="completed" && $3=="success" {ok=1} END {exit ok?0:1}' checks.tsv \
+              || { echo "::error::required check '$required' has not passed on $SHA"; exit 1; }
+          done
+          # Anything else from CI that failed also blocks (this workflow's own jobs are excluded).
+          if awk -F'\t' '$1!="verify" && $1!="publish" && $2=="completed" && $3!="success" && $3!="skipped" && $3!="neutral"' checks.tsv | grep -q .; then
+            echo "::error::a check on $SHA did not succeed"; exit 1
+          fi
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Not already on npm (no duplicate publication)
+        env:
+          VERSION: ${{ inputs.version }}
+        run: |
+          if npm view "one-small-modspack@$VERSION" version 2>/dev/null | grep -q .; then
+            echo "::error::one-small-modspack@$VERSION is already published"; exit 1
+          fi
+
+      - run: npm ci
+      - run: npm run build
+      - run: npx tsc -p tsconfig.cli.json
+      - run: npm run shared
+      - run: node --test test/*.test.mjs
+      - name: Dependency audit (the package has no runtime dependencies; dev tree must also be clean)
+        run: |
+          npm audit --omit=dev --audit-level=low
+          npm audit --audit-level=high
+
+      - name: Pack once; this exact file is what gets published
+        id: pack
+        run: |
+          mkdir -p artifact
+          npm pack --json --ignore-scripts --pack-destination artifact > pack.json
+          name=$(node -p "require('./pack.json')[0].filename")
+          node -e "
+            const files = require('./pack.json')[0].files.map(f => f.path).sort()
+            const expected = require('fs').readFileSync('release/package-files.txt', 'utf8').split(/\r?\n/).filter(Boolean).sort()
+            const extra = files.filter(f => !expected.includes(f)), missing = expected.filter(f => !files.includes(f))
+            if (extra.length || missing.length) { console.error('::error::tarball contents differ from release/package-files.txt'); console.error({ extra, missing }); process.exit(1) }
+            console.log(files.length + ' files match release/package-files.txt')
+          "
+          sha=$(sha256sum "artifact/$name" | cut -d' ' -f1)
+          echo "$sha  $name" | tee artifact/SHA256SUMS
+          echo "tarball=$name" >> "$GITHUB_OUTPUT"
+          echo "sha256=$sha" >> "$GITHUB_OUTPUT"
+
+      - name: The packed artifact works in a clean consumer
+        run: node scripts/consumer-smoke.mjs --tarball "artifact/${{ steps.pack.outputs.tarball }}"
+
+      - name: npm publish --dry-run of the exact tarball
+        run: npm publish "artifact/${{ steps.pack.outputs.tarball }}" --dry-run --access public
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: npm-tarball
+          path: artifact/
+          retention-days: 30
+
+      - name: Summary
+        env:
+          SHA: ${{ inputs.candidate_sha }}
+        run: |
+          {
+            echo "### one-small-modspack@${{ inputs.version }} verified"
+            echo "- candidate: \`$SHA\`"
+            echo "- tarball: \`${{ steps.pack.outputs.tarball }}\` sha256 \`${{ steps.pack.outputs.sha256 }}\`"
+            echo "- mode: ${{ inputs.mode }}"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  publish:
+    needs: verify
+    if: inputs.mode == 'publish'
+    runs-on: ubuntu-latest
+    # Configure this environment with the owner as required reviewer, restricted to main.
+    environment: npm-publish
+    permissions:
+      contents: read
+      id-token: write # npm provenance and trusted publishing
+    steps:
+      - name: Owner authorization
+        env:
+          ACTOR: ${{ github.actor }}
+          OWNER: ${{ github.repository_owner }}
+          GIVEN: ${{ inputs.authorization }}
+          WANT: I authorize publishing one-small-modspack@${{ inputs.version }} from ${{ inputs.candidate_sha }}
+        run: |
+          test "$ACTOR" = "$OWNER" || { echo "::error::only the repository owner may publish"; exit 1; }
+          test "$GIVEN" = "$WANT" || { echo "::error::authorization phrase does not match exactly"; exit 1; }
+
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.candidate_sha }}
+
+      - name: Manual acceptance is recorded at the candidate
+        run: |
+          f=release/2.0.0/manual-acceptance.md
+          test -f "$f" || { echo "::error::$f missing"; exit 1; }
+          if grep -nE '\|\s*(PENDING|FAIL)\s*\|' "$f"; then echo "::error::manual acceptance has PENDING or FAIL rows"; exit 1; fi
+          grep -Eq '^Owner sign-off: [^<_].+ on [0-9]{4}-[0-9]{2}-[0-9]{2}' "$f" || { echo "::error::no owner sign-off line in $f"; exit 1; }
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: npm-tarball
+          path: artifact
+
+      - name: Tarball is the one verify built
+        run: |
+          cd artifact
+          sha256sum -c SHA256SUMS
+          test "$(sha256sum '${{ needs.verify.outputs.tarball }}' | cut -d' ' -f1)" = "${{ needs.verify.outputs.sha256 }}"
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          registry-url: https://registry.npmjs.org
+
+      - name: npm new enough for trusted publishing
+        run: npm install --global npm@^11.5.1
+
+      - name: Publish with provenance
+        env:
+          # Optional: only for the first publication, before a trusted publisher can be configured.
+          # Put a granular token (publish, this package only, short expiry) in the npm-publish
+          # environment as NPM_TOKEN, then delete it once trusted publishing is set up.
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: npm publish "artifact/${{ needs.verify.outputs.tarball }}" --provenance --access public
+
+      - name: Confirm the registry serves it
+        run: |
+          for i in 1 2 3 4 5 6; do
+            v=$(npm view "one-small-modspack@${{ inputs.version }}" version 2>/dev/null || true)
+            [ "$v" = "${{ inputs.version }}" ] && { echo "published $v"; exit 0; }
+            sleep 10
+          done
+          echo "::error::registry does not show the version yet"; exit 1

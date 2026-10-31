@@ -3,7 +3,7 @@
 // the shim path is exercised there; a script elsewhere) in a directory whose name contains spaces.
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { chmodSync, copyFileSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync, existsSync } from 'node:fs'
+import { chmodSync, copyFileSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, symlinkSync, writeFileSync, existsSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
 import { spawnSync } from 'node:child_process'
@@ -107,8 +107,27 @@ test('run-mods: end to end, every directory is validated with its path intact, f
   try {
     assert.equal(quiet(() => main(['validate'], { root, env: fake.env })), 0)
     assert.deepEqual(fake.calls().map(c => c.args), [['plugin', 'validate', '.'], ['plugin', 'validate', 'mods/one'], ['plugin', 'validate', 'mods/two words']])
-    assert.ok(fake.calls().every(c => path.resolve(c.cwd) === path.resolve(root) || c.cwd.toLowerCase() === root.toLowerCase()))
+    // process.cwd() is a real path (macOS reports /private/var for /var), so compare real paths.
+    assert.ok(fake.calls().every(c => realpathSync(c.cwd) === realpathSync(root) || c.cwd.toLowerCase() === root.toLowerCase()))
   } finally {
+    rmSync(root, { recursive: true, force: true })
+    rmSync(fake.dir, { recursive: true, force: true })
+  }
+})
+
+test('run-mods: run through a symlinked path, the script still runs its checks (never a silent exit 0)', { skip: process.platform === 'win32' && 'symlinks need privileges on Windows' }, () => {
+  const root = tree(['a'])
+  const fake = fakeClaude('mods/a')
+  const link = path.join(tmpdir(), `run-mods-link-${process.pid}`)
+  try {
+    mkdirSync(path.join(root, 'scripts'))
+    for (const file of ['run-mods.mjs', 'root.mjs']) copyFileSync(path.join(ROOT, 'scripts', file), path.join(root, 'scripts', file))
+    symlinkSync(root, link)
+    const run = spawnSync(process.execPath, [path.join(link, 'scripts', 'run-mods.mjs'), 'validate'], { cwd: link, env: fake.env, encoding: 'utf8' })
+    assert.equal(run.status, 5, 'the failing validation must surface through the symlinked path')
+    assert.ok(fake.calls().length > 0, 'claude was never called')
+  } finally {
+    rmSync(link, { force: true })
     rmSync(root, { recursive: true, force: true })
     rmSync(fake.dir, { recursive: true, force: true })
   }

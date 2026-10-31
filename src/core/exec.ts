@@ -17,8 +17,11 @@ export const SHELL_SAFE = /^[A-Za-z0-9_@:./=+,-]+$/
 export function npmCli(execPath = process.execPath, env: NodeJS.ProcessEnv = process.env, exists: (p: string) => boolean = existsSync): string | undefined {
   const fromNpm = env.npm_execpath
   if (fromNpm !== undefined && /npm-cli\.c?js$/.test(fromNpm) && exists(fromNpm)) return fromNpm
+  // Windows installers put npm beside node.exe; POSIX tarballs and installers put it in ../lib.
   const beside = path.join(path.dirname(execPath), 'node_modules', 'npm', 'bin', 'npm-cli.js')
-  return exists(beside) ? beside : undefined
+  if (exists(beside)) return beside
+  const posix = path.join(path.dirname(execPath), '..', 'lib', 'node_modules', 'npm', 'bin', 'npm-cli.js')
+  return exists(posix) ? posix : undefined
 }
 
 function refused(reason: string): SpawnSyncReturns<string> {

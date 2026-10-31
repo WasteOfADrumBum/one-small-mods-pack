@@ -7,7 +7,7 @@
 //
 // Stops at the first failure and exits with that command's status. Exit 3: the `claude` command was not found.
 import { spawnSync } from 'node:child_process'
-import { existsSync, readdirSync, statSync } from 'node:fs'
+import { existsSync, readdirSync, realpathSync, statSync } from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 
@@ -97,4 +97,7 @@ export function main(argv, { root = projectRoot(import.meta.url), env = process.
   return runAll(list, run, line => console.error(line))
 }
 
-if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) process.exitCode = main(process.argv.slice(2))
+// Compare real paths: Node resolves symlinks in the main module's URL (macOS /var -> /private/var,
+// a symlinked checkout), so a plain comparison would skip main() and exit 0 having checked nothing.
+const real = p => { try { return realpathSync(p) } catch { return path.resolve(p) } }
+if (process.argv[1] && real(process.argv[1]) === real(fileURLToPath(import.meta.url))) process.exitCode = main(process.argv.slice(2))

@@ -14,6 +14,9 @@ test('exec: the npm entry is found beside node (the Windows layout) or from npm_
   const entry = path.join('/opt/nodejs', 'node_modules', 'npm', 'bin', 'npm-cli.js')
   assert.equal(npmCli(path.join('/opt/nodejs', 'node.exe'), {}, p => p === entry), entry)
   assert.equal(npmCli('/elsewhere/node', {}, () => false), undefined)
+  // POSIX layout (nodejs.org tarballs, nvm): bin/node and lib/node_modules/npm, used when node --test runs outside npm.
+  const posix = path.join('/opt/node/bin', '..', 'lib', 'node_modules', 'npm', 'bin', 'npm-cli.js')
+  assert.equal(npmCli('/opt/node/bin/node', {}, p => p === posix), posix)
   assert.equal(npmCli('x', { npm_execpath: '/usr/lib/node_modules/npm/bin/npm-cli.js' }, () => true), '/usr/lib/node_modules/npm/bin/npm-cli.js')
   assert.equal(npmCli('x', { npm_execpath: '/usr/lib/node_modules/pnpm/bin/pnpm.cjs' }, () => false), undefined)
 })

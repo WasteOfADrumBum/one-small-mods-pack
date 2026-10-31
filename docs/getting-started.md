@@ -13,7 +13,7 @@ ModsPack gives your AI coding tool a shared set of agent roles, skills and guard
 
 ## Try it without changing anything
 
-These `npx` commands work once the package is published; until then use the clone steps under "Install for your tools".
+These `npx` commands need the package on npm. If npm reports `one-small-modspack` as not found, it has not been published yet: use the clone or tarball steps under "Install for your tools".
 
 ```text
 npx one-small-modspack inspect
@@ -24,7 +24,7 @@ npx one-small-modspack init
 
 ## Install for your tools
 
-Once the package is published, install it in the target project first. Hooks use
+Install it in the target project first. Hooks use
 `npx --no-install modspack`, so a one-off `npx one-small-modspack init` does not
 provide the local executable the hooks need.
 
@@ -38,7 +38,7 @@ npx one-small-modspack init --platform copilot,gemini --yes
 npx one-small-modspack init --platform claude-code --yes
 ```
 
-The package is not published to npm yet, so until it is, run it from a clone: `npm ci && npm run build && node dist/modspack.mjs init`.
+If the package is not on npm yet, run it from a clone: `npm ci && npm run build && node dist/modspack.mjs init`.
 
 For a pre-release integration test, run `npm pack` in the clone, then install the
 resulting `.tgz` in a disposable project with `npm install --save-dev <path-to-tgz>`.

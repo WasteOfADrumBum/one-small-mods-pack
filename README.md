@@ -17,9 +17,9 @@ npx one-small-modspack init           # preview; add --yes to apply (never overw
 npx one-small-modspack release-check  # READY or NOT READY, with the steps to get there
 ```
 
-The package is not published to npm. From a clone: `npm ci && npm run build && node dist/modspack.mjs --help`.
+If npm reports `one-small-modspack` as not found, it has not been published yet. Run it from a clone instead: `npm ci && npm run build && node dist/modspack.mjs --help`, or install a packed tarball (see [getting started](docs/getting-started.md)).
 
-**What it is not.** It does not certify HIPAA, WCAG or any other compliance, and its HIPAA-related review marks organisational safeguards NOT ASSESSED. Platform support is stated per capability in [`catalog/compatibility.json`](catalog/compatibility.json); Codex has live evidence for instruction and skill discovery only; hook enforcement on Codex and all Copilot and Gemini CLI runtime are NOT TESTED in this release. See [known limitations](docs/limitations.md). Update with `modspack init`, remove with `modspack uninstall --yes`; see [getting started](docs/getting-started.md), [configuration](docs/configuration.md), [CI](docs/ci.md), [troubleshooting](docs/troubleshooting.md) and [migration](docs/migration.md).
+**What it is not.** It does not certify HIPAA, WCAG or any other compliance, and its HIPAA-related review marks organisational safeguards NOT ASSESSED. Platform support is stated per capability in [`catalog/compatibility.json`](catalog/compatibility.json); The five Claude Code guards enforced in a live Claude Code run. Codex, Copilot and Gemini CLI have live evidence for instruction and skill discovery; a Codex hook denied a secret live, but only once its trust was bypassed (an untrusted Codex hook does nothing), and hooks, custom agents and model use on Copilot and Gemini CLI are NOT TESTED in this release. See [known limitations](docs/limitations.md). Update with `modspack init`, remove with `modspack uninstall --yes`; see [getting started](docs/getting-started.md), [configuration](docs/configuration.md), [CI](docs/ci.md), [troubleshooting](docs/troubleshooting.md) and [migration](docs/migration.md).
 
 ---
 

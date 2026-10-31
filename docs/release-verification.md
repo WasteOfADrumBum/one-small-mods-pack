@@ -3,6 +3,27 @@
 Checkpoint: 2026-10-22, America/New_York (third pass, on top of `0c3bb56`; earlier passes 2026-10-21 on `1c372fa` and `559d010`). **NO-GO for release** until the manual items below are done or an explicit scope decision defers them; the owner deferred the manual items on 2026-10-29 (see Scope decision), so website deployment and publishing remain NO-GO.
 No merge, tag, npm publication or deployment was performed.
 
+## Release-preparation pass (2026-10-31)
+
+Base: `main` at `452238075c5ad95c48cb41531c301253b1e36afe` (PR #3 merge `c747cbd` plus the Engineering Hub continuity contract, PR #4). Linux container, Node 22.23.4, npm 10.9.9, Claude Code 2.1.316. Nothing was published, tagged or deployed; no manual item below was run or marked passed.
+
+| Check | Result |
+| --- | --- |
+| `npm ci`, `npm run check` | PASS: 90 CLI tests, shared files, CLI typecheck, `claude plugin validate` on all six plugins (only the six ICON_MISSING warnings), 133 mod tests (design-guardrail 35, privacy-guard 29, qa-gate 24, secret-scrubber 22, wcag-enforcer 23). |
+| `npm run site:check` | PASS: 18 pages, Playwright Chromium (same scope as before; not manual testing). |
+| `npm audit`, `npm audit --omit=dev` | PASS: 0 vulnerabilities each. |
+| `npm pack --dry-run` | PASS: 82 files, now pinned in `release/package-files.txt` and checked by the artifact test. |
+| Packed artifact in a clean consumer (`scripts/consumer-smoke.mjs`) | PASS 40/40 on Node 20.20.2, 22.23.4 and 24.22.2: every command through the installed bin, exit codes, preview writes nothing, repeat install is a no-op, user `AGENTS.md` kept, hook denials masked, uninstall restores the tree byte for byte, no network connection from deterministic commands. |
+| Node 20 | CLI runtime PASS (smoke above, and 82 of 82 non-site CLI tests). `site.test.mjs` cannot run there: jsdom 30, a dev dependency, requires Node ^22.22.2, ^24.15.0 or >=26. CI now has Node 20, Node 24 and macOS jobs. |
+| Live Claude Code 2.1.316 guards (headless `claude -p` with `--plugin-dir`) | PASS for all five: secret-scrubber redacted a token in the model-visible tool result; privacy-guard refused a Write with an SSN; design-guardrail refused a hardcoded color and named `var(--color-brand)`; wcag-enforcer reported an axe failure for an `img` without `alt` and the model fixed it; qa-gate held the turn at Stop until the failing test passed. With a wrong fixture, design-guardrail and wcag-enforcer said they were idle or skipping (no tokens file, axe missing) rather than passing. |
+| secret-scrubber fail closed | New tests: a scan that throws withholds the tool output (shown to fail when the handler passes output through). |
+| Codex 0.166.0 | `codex debug prompt-input` (no model) on a project installed from the tarball: ModsPack block, all 12 skills, all six agent names. Hooks not exercised (no OpenAI credentials). |
+| Copilot CLI 1.0.105 | `copilot skill list`: 12 project skills; `copilot instruction list`: AGENTS.md. Hooks and agents need sign-in: NOT TESTED. |
+| Gemini CLI 0.66.0 | Trusted folder: `gemini skills list` shows 12 Enabled. Untrusted folder: no skills, project agents skipped and project hooks disabled (now in limitations). Model use needs sign-in: NOT TESTED. |
+| npm registry | `one-small-modspack` still E404. Not a reservation. |
+
+Added for the owner: `release/README.md` (runbook, one-time setup, rollback), `.github/workflows/release.yml` (fail-closed publish, dry run by default), `.github/workflows/pages.yml` (site build; deploy gated on manual acceptance), `release/2.0.0/manual-acceptance.md` (the remaining manual checks, all PENDING), `release/2.0.0/release-notes.md` and `release/2.0.0/tracker.md`.
+
 ## Scope decision (2026-10-29, owner)
 
 The owner postponed the manual testing and asked to finish the work. Nothing below was run or marked passed because of that. The deferred items stay NOT TESTED in the table:
@@ -38,7 +59,7 @@ All automated work is complete and CI is green (cli, mods, windows). What the de
 | Plugin and package versions | FIXED / PASS | Third pass found `design-guardrail`, `qa-gate`, `secret-scrubber` and `wcag-enforcer` still at 0.1.0 although their hook code differs from `main`. Claude Code updates an installed plugin only when the version changes, so existing installs would never get the fixes. Bumped to 0.1.1 (patch: robustness and Windows fixes, no feature change); `privacy-guard` and `modspack-agents` stay 2.0.0. `CHANGELOG.md` has a `Mod versions` list and `test/release-docs.test.mjs` fails if a plugin version, the changelog, the package heading or the marketplace membership disagree (shown to fail on a stale 0.1.0). |
 | Release docs and claims | PASS | README, CHANGELOG and `docs/limitations.md` reviewed. Install, update and `modspack uninstall --yes` instructions exist (`docs/getting-started.md`). The README and CHANGELOG said Codex runtime was wholly NOT TESTED while discovery had live evidence; reworded to the evidence actually held (Codex discovery only; hook enforcement NOT TESTED). Compatibility statuses come from `catalog/compatibility.json`. |
 | Dependency audit | PASS | Third pass: `npm audit --json --fetch-retries=1 --fetch-timeout=120000` exited 0 in 1.5 s: 0 vulnerabilities across 67 locked packages (info/low/moderate/high/critical all 0); `npm audit --omit=dev` also 0; `npm audit signatures` verified 17 packages with attestations. Two earlier attempts failed with `network timeout` at `/-/npm/v1/security/advisories/bulk`; that was the endpoint, not a finding, and the OSV.dev substitute then found nothing either. The package has zero runtime dependencies (devDependencies only). |
-| Node 20 (`engines`) | PARTIAL PASS | Node 20.20.2: the 77 tests outside `site` and `package` pass, and the built CLI runs `validate`, `init` for all four platforms and `uninstall`; `doctor` output is identical to Node 26. `site.test.mjs` cannot load on Node 20 (jsdom's undici needs a newer zlib; dev-only) and the artifact test needs a Node bundled with npm. CI runs Node 22 only. |
+| Node 20 (`engines`) | PARTIAL PASS | Node 20.20.2: the 77 tests outside `site` and `package` pass, and the built CLI runs `validate`, `init` for all four platforms and `uninstall`; `doctor` output is identical to Node 26. `site.test.mjs` cannot load on Node 20 (jsdom's undici needs a newer zlib; dev-only) and the artifact test needs a Node bundled with npm. CI ran Node 22 only at the time; since 2026-10-31 a `node-compat` job runs Node 20 (site tests excluded), Node 24 and macOS. |
 
 The ESLint 9 fixture is isolated test tooling; npm reports that major as unsupported.
 It was used to exercise the supported flat-config integration, not added as a
@@ -68,7 +89,8 @@ ModsPack dependency or recommended for new projects.
 - [x] Package contents reviewed (82 files, listed above; rerun third pass).
 - [x] Plugin versions bumped where hook code changed, with a consistency test.
 - [x] Final PR CI on `9e79b0b`: cli, mods, windows all passed (run 39808719131).
-- [ ] Confirm npm ownership/access immediately before an authorized release. Consider adding Node 20 to the CI matrix to back the `engines` claim.
+- [ ] Confirm npm ownership/access immediately before an authorized release.
+- [x] Node 20 and 24 (and macOS) in CI, with the packed-artifact smoke test (2026-10-31).
 - [ ] Obtain explicit authorization for merge, tagging, publishing and deployment.
 
 The release remains a draft until the blocking checks above are completed or an

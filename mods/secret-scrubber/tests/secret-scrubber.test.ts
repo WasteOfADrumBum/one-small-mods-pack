@@ -223,6 +223,31 @@ test('leaves a clean attachment as it was', async ($, on) => {
   expect(out.text).toBe('Remember the todo list.')
 })
 
+// The documented failure mode is fail closed: if the scan fails part-way, the original output
+// (which may hold the secret) must never reach Claude. A null entry in a tool result's content
+// array is malformed input that makes the scan throw.
+describe('fail closed', () => {
+  test('a scan that throws withholds the whole tool output instead of passing it through', async ($, on) => {
+    stubEngine(on)
+    const session = mock.session(on)
+
+    await $.session.append(toolResult('t1', [{ type: 'text', text: `export GITHUB_TOKEN=${GITHUB}` }, null]))
+
+    expect(JSON.stringify(session.appended())).not.toContain(GITHUB)
+    expect(firstResult(session.appended())).toBe('[secret-scrubber could not scan this output, so it was withheld]')
+  })
+
+  test('the next, well-formed output is scrubbed as usual after a failure', async ($, on) => {
+    stubEngine(on)
+    const session = mock.session(on)
+
+    await $.session.append(toolResult('t1', [null]))
+    await $.session.append(toolResult('t2', `k ${GOOGLE}`))
+
+    expect(firstResult(session.appended())).toBe('k [REDACTED:google-api-key]')
+  })
+})
+
 // Tool arguments come from the model as JSON, so they can be any type. The call is built from text to
 // stay as untyped as it is on the wire.
 const wire = (tool: string, args: Record<string, unknown>) => JSON.stringify({ tool, ...args })
