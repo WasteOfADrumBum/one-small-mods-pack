@@ -14,6 +14,7 @@
 - `.github/workflows/release.yml`: a manually started, fail-closed npm publish workflow (dry run by default) with provenance. See `release/README.md`.
 
 ### Fixed
+- `scripts/run-mods.mjs` (behind `npm run validate` and `npm test`) did nothing and exited 0 when the repository was reached through a symlink, such as macOS `/var` → `/private/var` or a symlinked checkout: Node resolves the main module's real path, so the entrypoint check never matched. It now compares real paths, with a regression test. Found by the new macOS CI job.
 - npm artifact: `package.json` `files` listed `mods/*/hooks`, `mods/*/scripts`, `agents`, `skills`, `catalog`, `schema` and `docs` as bare directories, which npm does not expand through the `*` pattern; the tarball shipped no guard hook modules or helper scripts (55 files). They are now `/**` patterns (82 files), and the artifact test compares every file under each mod's `hooks` and `scripts` with the tarball listing.
 - Website: in Windows high contrast (forced colors) the home page button lost its only boundary; it now keeps a 2px `ButtonText` border. `scripts/site-browser-check.mjs` also checks forced colors and text spacing, and no longer crashes its own server on a missing file.
 - npm artifact: include `.claude-plugin/marketplace.json`, which `modspack validate` reads. The source checkout validated successfully but the installed tarball crashed with ENOENT. A regression test now packs, installs, validates and initializes every platform from the artifact.
