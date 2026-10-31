@@ -1,41 +1,148 @@
 {
   "stateVersion": 1,
-  "revision": 0,
-  "checkpointId": "init-0000000",
+  "revision": 1,
+  "checkpointId": "rel-2-0-prep-b0ff54a",
   "projectId": "one-small-mods-pack",
   "repository": "https://github.com/WasteOfADrumBum/one-small-mods-pack",
   "hub": "https://github.com/WasteOfADrumBum/one-small-engineering",
   "recorded": {
     "branch": "main",
-    "commit": null,
-    "recordedAt": null
+    "commit": "b0ff54a436c90dc02b59cde3a1fca5e94334bc4f",
+    "recordedAt": "2026-10-31T19:46:44Z"
   },
   "development": {
-    "milestone": null,
+    "milestone": "ModsPack 2.0.0 release",
     "activeTask": null,
     "workingBranch": null,
     "activePr": null,
-    "lastCompleted": [],
+    "lastCompleted": [
+      "PRs #5 and #6 merged: packed-artifact smoke test (scripts/consumer-smoke.mjs), CI node-compat (Node 20, 24, macOS) and site jobs, fail-closed release.yml (npm, dry run by default) and pages.yml, secret-scrubber fail-closed tests, release/ runbook, notes, manual acceptance checklist and tracker.",
+      "Live Claude Code 2.1.316 headless runs: all five guards enforced (scrubber redaction, privacy and design refusals, WCAG axe finding, qa-gate Stop hold).",
+      "Discovery rechecked from the packed tarball: Codex 0.166.0 prompt-input, Copilot CLI 1.0.105 skill/instruction list, Gemini CLI 0.66.0 skills list (trusted folder only).",
+      "catalog/compatibility.json, README, CHANGELOG, limitations, verification and release-verification docs updated to 2026-10-31 evidence."
+    ],
     "inProgress": [],
-    "nextAction": null
+    "nextAction": "Owner: complete release/2.0.0/manual-acceptance.md (or mark rows DEFERRED-BY-OWNER), do the one-time setup in release/README.md, then run Release (npm) in dry-run mode on the sign-off commit and follow release/README.md (tag, publish, GitHub release, Pages deploy)."
   },
   "decisions": {
-    "made": [],
-    "constraints": [],
-    "unresolved": []
+    "made": [
+      {
+        "id": "rc-2-0-0-candidate",
+        "summary": "Agent proposes b0ff54a436c90dc02b59cde3a1fca5e94334bc4f (merge of PR #5) as the 2.0.0 candidate instead of c747cbd, because shipped docs and catalog changed to current evidence; c747cbd evidence stays attached to c747cbd. Owner must accept by releasing from it.",
+        "decidedBy": "agent",
+        "humanRef": null,
+        "recordedAt": "2026-10-31T19:46:44Z"
+      },
+      {
+        "id": "node20-scope",
+        "summary": "Node 20 support claim kept for the CLI runtime (smoke and 82 non-site tests pass); dev-only site tests need Node >=22.22.2 (jsdom 30) and are excluded on Node 20 in CI.",
+        "decidedBy": "agent",
+        "humanRef": null,
+        "recordedAt": "2026-10-31T19:46:44Z"
+      },
+      {
+        "id": "manual-tests-deferred",
+        "summary": "Owner postponed manual accessibility testing on 2026-10-29; nothing marked passed.",
+        "decidedBy": "human",
+        "humanRef": "docs/release-verification.md, section \"Scope decision (2026-10-29, owner)\"",
+        "recordedAt": "2026-10-31T19:46:44Z"
+      }
+    ],
+    "constraints": [
+      "npm publish, tags, GitHub releases, website deployment and release approval are owner actions.",
+      "Website must not be deployed and the package must not be called accessibility-verified until manual accessibility checks are done.",
+      "Do not mark manual or platform checks passed without a person running them."
+    ],
+    "unresolved": [
+      "Ship with Codex interactive trust, Copilot and Gemini runtime unverified (DEFERRED-BY-OWNER) or test them first.",
+      "Plugin icon artwork before any plugin directory submission."
+    ]
   },
   "verification": {
-    "testsRun": [],
+    "testsRun": [
+      {
+        "command": "npm ci && npm run check (91 CLI + 133 mod tests, plugin validate)",
+        "result": "pass",
+        "commit": "b0ff54a436c90dc02b59cde3a1fca5e94334bc4f",
+        "at": "2026-10-31T19:46:44Z",
+        "ciRunUrl": null
+      },
+      {
+        "command": "npm run site:check (18 pages, Playwright Chromium)",
+        "result": "pass",
+        "commit": "b0ff54a436c90dc02b59cde3a1fca5e94334bc4f",
+        "at": "2026-10-31T19:46:44Z",
+        "ciRunUrl": null
+      },
+      {
+        "command": "npm audit; npm audit --omit=dev (0 vulnerabilities)",
+        "result": "pass",
+        "commit": "b0ff54a436c90dc02b59cde3a1fca5e94334bc4f",
+        "at": "2026-10-31T19:46:44Z",
+        "ciRunUrl": null
+      },
+      {
+        "command": "node scripts/consumer-smoke.mjs on Node 20.20.2, 22.23.4, 24.22.2 (40/40 each)",
+        "result": "pass",
+        "commit": "b0ff54a436c90dc02b59cde3a1fca5e94334bc4f",
+        "at": "2026-10-31T19:46:44Z",
+        "ciRunUrl": null
+      },
+      {
+        "command": "CI: cli, mods, windows, site, node-compat x3",
+        "result": "pass",
+        "commit": "b0ff54a436c90dc02b59cde3a1fca5e94334bc4f",
+        "at": "2026-10-31T19:46:44Z",
+        "ciRunUrl": "https://github.com/WasteOfADrumBum/one-small-mods-pack/actions/runs/41235320197"
+      },
+      {
+        "command": "Release (npm) workflow, mode dry-run, version 2.0.0 (all gates, exact tarball, npm publish --dry-run)",
+        "result": "pass",
+        "commit": "b0ff54a436c90dc02b59cde3a1fca5e94334bc4f",
+        "at": "2026-10-31T19:46:44Z",
+        "ciRunUrl": "https://github.com/WasteOfADrumBum/one-small-mods-pack/actions/runs/41235745436"
+      },
+      {
+        "command": "Website (GitHub Pages) workflow, mode build (site:check in CI)",
+        "result": "pass",
+        "commit": "b0ff54a436c90dc02b59cde3a1fca5e94334bc4f",
+        "at": "2026-10-31T19:46:44Z",
+        "ciRunUrl": "https://github.com/WasteOfADrumBum/one-small-mods-pack/actions/runs/41235346296"
+      },
+      {
+        "command": "screen reader, real zoom, Windows High Contrast, manual keyboard",
+        "result": "not_run",
+        "commit": null,
+        "at": "2026-10-31T19:46:44Z",
+        "ciRunUrl": null
+      },
+      {
+        "command": "Codex interactive /hooks trust; Copilot and Gemini signed-in runtime",
+        "result": "not_run",
+        "commit": null,
+        "at": "2026-10-31T19:46:44Z",
+        "ciRunUrl": null
+      }
+    ],
     "unverifiedChanges": []
   },
   "handoff": {
-    "lastAgent": null,
-    "checkpointedAt": null,
-    "unfinished": [],
-    "blockers": [],
-    "continuation": null,
-    "uncommittedWorkOutsideCheckpoint": "unknown",
-    "persistedBy": "github-api"
+    "lastAgent": {
+      "tool": "claude-code",
+      "model": null
+    },
+    "checkpointedAt": "2026-10-31T19:46:44Z",
+    "unfinished": [
+      "Manual acceptance (release/2.0.0/manual-acceptance.md, 15 rows PENDING)",
+      "npm publication, v2.0.0 tag, GitHub release, website deployment (owner)"
+    ],
+    "blockers": [
+      "Manual accessibility acceptance (blocks website deploy and the publish gate)",
+      "Owner authorization and npm account setup"
+    ],
+    "continuation": "Read release/2.0.0/tracker.md and release/README.md. No agent work remains before the owner acts; after the owner signs manual-acceptance.md, an agent can run the Release (npm) dry run and report.",
+    "uncommittedWorkOutsideCheckpoint": "none",
+    "persistedBy": "local-file"
   },
   "provenance": {
     "claims": "agent_reported",
