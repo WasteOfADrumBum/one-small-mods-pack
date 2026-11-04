@@ -26,14 +26,20 @@ Any gate that cannot be evaluated fails the run. The default modes (`dry-run`, `
    free: `npm view one-small-modspack` must say E404. A 404 does not reserve the name.
 2. **GitHub environment `npm-publish`**: Settings > Environments > New environment. Add yourself as a
    required reviewer and restrict deployment branches to `main`.
-3. **First publication only**: npm trusted publishing can be configured only for a package that exists.
-   For the first release create a granular access token at
-   <https://www.npmjs.com/settings/~/tokens> (packages: read and write, all packages or the new
-   name, expiry 1–7 days), and store it as the `NPM_TOKEN` secret of the `npm-publish` environment
-   (not a repository secret).
+3. **First publication only**: npm can trust a publisher only for a package that already exists,
+   so 2.0.0 is published with a short-lived token. Create a granular access token at
+   <https://www.npmjs.com/settings/~/tokens>: permissions **Read and write**, packages **All
+   packages** (an unpublished name cannot be selected), **Bypass two-factor authentication**
+   checked (CI cannot answer a 2FA prompt), expiry 1 day. Store it as the `NPM_TOKEN` secret of the
+   `npm-publish` environment (not a repository secret). The release still carries provenance:
+   `--provenance` signs with the workflow's GitHub OIDC identity, whatever authenticates the upload.
 4. **After the first publication**: on the package's npm Settings page add a trusted publisher
-   (GitHub Actions, repository `WasteOfADrumBum/one-small-mods-pack`, workflow `release.yml`,
-   environment `npm-publish`), then delete the `NPM_TOKEN` secret and revoke the token.
+   (GitHub Actions, organization or user `WasteOfADrumBum`, repository `one-small-mods-pack`,
+   workflow filename `release.yml`, environment `npm-publish`), or from a terminal with npm 11.15.0 or later:
+   `npm trust github one-small-modspack --repo WasteOfADrumBum/one-small-mods-pack --file release.yml --env npm-publish --allow-publish`.
+   Then delete the `NPM_TOKEN` secret and revoke the token. npm expires a new trusted-publisher
+   configuration that has no successful publish within 2 days, so add it when you are ready to
+   release the next version, or re-add it then.
 5. **Website**: Settings > Pages > Source: GitHub Actions. Add yourself as required reviewer on the
    `github-pages` environment. The site uses relative links, so it works at
    `https://wasteofadrumbum.github.io/one-small-mods-pack/`.
