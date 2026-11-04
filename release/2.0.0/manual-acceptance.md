@@ -1,7 +1,8 @@
 # ModsPack 2.0.0: manual acceptance record
 
-Only a person fills in this file. An AI agent must not change a Result from PENDING, and must not
-write the sign-off line. The release and website workflows refuse to publish or deploy while any
+Only a person fills in this file. An AI agent must not change a Result from PENDING on its own, and
+must not write the sign-off line. It may transcribe a result the owner reports in writing, citing
+that report in Evidence. The release and website workflows refuse to publish or deploy while any
 row is PENDING or FAIL, or while the sign-off line below is missing.
 
 Allowed results: `PASS`, `FAIL`, `PENDING`, or `DEFERRED-BY-OWNER` (the owner accepts shipping
@@ -9,6 +10,8 @@ without this check; say why in Evidence). Automated equivalents already pass in 
 `npm run site:check`); they are listed in the last column so you know what is already covered.
 
 ## How to open the site
+
+Step-by-step PowerShell commands and a short checklist: [`manual-a11y-quickstart.md`](manual-a11y-quickstart.md).
 
 From a clone at the candidate commit: `npm ci && npm run site`, then serve it, for example
 `npx --yes http-server site/dist -p 8080`, and open <http://localhost:8080/>. Or download the

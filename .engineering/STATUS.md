@@ -1,41 +1,43 @@
-<!-- generated from .engineering/state.json (revision 1); edit state.json through a checkpoint, not this file -->
+<!-- generated from .engineering/state.json (revision 2); edit state.json through a checkpoint, not this file -->
 
 # one-small-mods-pack: development status
 
 All values are **agent-reported**, not independently verified. Check GitHub before relying on them.
 
 - Milestone: ModsPack 2.0.0 release
-- Active task: none recorded
-- Branch: unknown
-- Recorded commit: `b0ff54a` on `main`
-- Last checkpoint: 2026-10-31T19:46:44Z by claude-code
+- Active task: rel-2-0-closeout: 2.0.0 release closure records (PR #8); waiting on owner gates
+- Branch: `release/2.0.0-closeout` · PR #8
+- Recorded commit: `26b5ccd` on `main`
+- Last checkpoint: 2026-11-04T16:24:23Z by claude-code
 
 ## Next action
 
-Owner: complete release/2.0.0/manual-acceptance.md (or mark rows DEFERRED-BY-OWNER), do the one-time setup in release/README.md, then run Release (npm) in dry-run mode on the sign-off commit and follow release/README.md (tag, publish, GitHub release, Pages deploy).
+Owner: review/merge PR #8; complete release/2.0.0/manual-acceptance.md using manual-a11y-quickstart.md (or mark rows DEFERRED-BY-OWNER) and sign off; do the one-time npm/environment setup in release/README.md; then dry run, tag, publish and release from the sign-off commit.
 
 ## Completed
 
-- PRs #5 and #6 merged: packed-artifact smoke test (scripts/consumer-smoke.mjs), CI node-compat (Node 20, 24, macOS) and site jobs, fail-closed release.yml (npm, dry run by default) and pages.yml, secret-scrubber fail-closed tests, release/ runbook, notes, manual acceptance checklist and tracker.
-- Live Claude Code 2.1.316 headless runs: all five guards enforced (scrubber redaction, privacy and design refusals, WCAG axe finding, qa-gate Stop hold).
-- Discovery rechecked from the packed tarball: Codex 0.166.0 prompt-input, Copilot CLI 1.0.105 skill/instruction list, Gemini CLI 0.66.0 skills list (trusted folder only).
-- catalog/compatibility.json, README, CHANGELOG, limitations, verification and release-verification docs updated to 2026-10-31 evidence.
+- 2026-11-04 on main 26b5ccd: tarball byte-identical to b0ff54a (sha256 8fb17e48...a8fab7, 82 files); npm run check 91 CLI + 133 mod tests; site:check 18 pages; audits 0; smoke 40/40.
+- Mod typecheck against Claude Code 2.1.318 declarations: 0 errors across all five guard mods incl. privacy-guard (modspack-agents has no TypeScript).
+- modspack-agents loaded live in Claude Code 2.1.318 (6 agents, 12 skills) and release-manager delegated to.
+- Runbook: first-publication token settings corrected (All packages, bypass 2FA); npm trust github route added. Manual a11y quick start (PowerShell) added. ROADMAP.md added.
 
 ## In progress
 
-_none recorded_
+- PR #8 (release records only, no shipped file change): CI and owner review
 
 ## Tests (agent-reported)
 
-- `npm ci && npm run check (91 CLI + 133 mod tests, plugin validate)`: pass at `b0ff54a`, 2026-10-31T19:46:44Z
-- `npm run site:check (18 pages, Playwright Chromium)`: pass at `b0ff54a`, 2026-10-31T19:46:44Z
-- `npm audit; npm audit --omit=dev (0 vulnerabilities)`: pass at `b0ff54a`, 2026-10-31T19:46:44Z
-- `node scripts/consumer-smoke.mjs on Node 20.20.2, 22.23.4, 24.22.2 (40/40 each)`: pass at `b0ff54a`, 2026-10-31T19:46:44Z
-- `CI: cli, mods, windows, site, node-compat x3`: pass at `b0ff54a`, 2026-10-31T19:46:44Z
-- `Release (npm) workflow, mode dry-run, version 2.0.0 (all gates, exact tarball, npm publish --dry-run)`: pass at `b0ff54a`, 2026-10-31T19:46:44Z
-- `Website (GitHub Pages) workflow, mode build (site:check in CI)`: pass at `b0ff54a`, 2026-10-31T19:46:44Z
-- `screen reader, real zoom, Windows High Contrast, manual keyboard`: not_run, 2026-10-31T19:46:44Z
-- `Codex interactive /hooks trust; Copilot and Gemini signed-in runtime`: not_run, 2026-10-31T19:46:44Z
+- `npm ci && npm run check (91 CLI + 133 mod tests, plugin validate)`: pass at `26b5ccd`, 2026-11-04T16:24:23Z
+- `npm run typecheck (all five guard mods) against Claude Code 2.1.318 declarations`: pass at `26b5ccd`, 2026-11-04T16:24:23Z
+- `claude -p --plugin-dir mods/modspack-agents (Claude Code 2.1.318): 6 agents and 12 skills listed; delegation to release…`: pass at `26b5ccd`, 2026-11-04T16:24:23Z
+- `npm run site:check (18 pages, Playwright Chromium)`: pass at `26b5ccd`, 2026-11-04T16:24:23Z
+- `npm audit --omit=dev --audit-level=low; npm audit --audit-level=high (0 vulnerabilities)`: pass at `26b5ccd`, 2026-11-04T16:24:23Z
+- `npm pack (82 files = release/package-files.txt, sha256 identical to b0ff54a) and consumer-smoke 40/40`: pass at `26b5ccd`, 2026-11-04T16:24:23Z
+- `CI: cli, mods, windows, site, node-compat x3 on main`: pass at `26b5ccd`, 2026-10-31T19:49:14Z
+- `Release (npm) workflow, mode dry-run, candidate b0ff54a, workflow ref 2681b06`: pass at `b0ff54a`, 2026-10-31T19:46:04Z
+- `Copilot CLI 1.0.105 copilot -p: not run, the session GitHub token was refused (no Copilot access)`: not_run at `26b5ccd`, 2026-11-04T16:24:23Z
+- `screen reader, real zoom, text spacing, Windows contrast themes, manual keyboard`: not_run, 2026-11-04T16:24:23Z
+- `Codex interactive /hooks trust; Copilot and Gemini signed-in runtime (no credentials in the agent container)`: not_run, 2026-11-04T16:24:23Z
 
 ## Unverified changes
 
