@@ -35,9 +35,9 @@ concurrency:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ inputs.candidate_sha }}
           fetch-depth: 0
@@ -49,7 +49,7 @@ jobs:
           test "$(git rev-parse HEAD)" = "$SHA"
           git fetch --no-tags origin main
           git merge-base --is-ancestor "$SHA" origin/main || { echo "::error::$SHA is not on main"; exit 1; }
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: 22
           cache: npm
@@ -65,7 +65,7 @@ jobs:
   deploy:
     needs: build
     if: inputs.mode == 'deploy'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     permissions:
       contents: read
       pages: write
@@ -83,7 +83,7 @@ jobs:
         run: |
           test "$ACTOR" = "$OWNER" || { echo "::error::only the repository owner may deploy"; exit 1; }
           test "$GIVEN" = "$WANT" || { echo "::error::authorization phrase does not match exactly"; exit 1; }
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ inputs.candidate_sha }}
       - name: Manual accessibility acceptance is recorded at the candidate
