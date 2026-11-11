@@ -58,6 +58,10 @@ Any gate that cannot be evaluated fails the run. The default modes (`dry-run`, `
 5. Publish: run the workflow again with mode `publish` and the authorization
    `I authorize publishing one-small-modspack@2.0.0 from <sha>`, then approve the `npm-publish`
    environment when GitHub asks.
+   The last step waits up to five minutes for the registry, then warns instead of failing:
+   check `npm view one-small-modspack@<version> version` a few minutes later, and if npm staged
+   the upload, approve it at npmjs.com > Packages > Staged Packages with 2FA. (2.0.0 took about
+   three minutes to appear on 2026-11-11.)
 6. GitHub release (owner): `gh release create v2.0.0 --verify-tag --title "One Small ModsPack 2.0.0"
    --notes-file release/2.0.0/release-notes.md`, and attach the tarball and `SHA256SUMS` from the
    run's artifact.
