@@ -1,12 +1,8 @@
-name: Website (GitHub Pages)
+name: Website (build check)
 
-# Manually started only. `build` always runs: it generates the site from the candidate commit and
-# runs the real-browser accessibility automation. `deploy` runs only when mode is deploy, the
-# owner started it with the exact authorization phrase, and the manual accessibility acceptance
-# record at the candidate has an owner sign-off and no PENDING or FAIL rows.
-#
-# One-time setup by the owner: Settings > Pages > Source: GitHub Actions; and add the owner as a
-# required reviewer on the `github-pages` environment.
+# Manually started only. Generates the site from the candidate commit and runs the real-browser
+# accessibility automation. The site is hosted on Vercel (vercel.json), which deploys main on
+# every merge; this workflow is the browser check, not a deploy.
 
 on:
   workflow_dispatch:
@@ -14,16 +10,6 @@ on:
       candidate_sha:
         description: Full commit SHA to build the site from (must be on main)
         required: true
-        type: string
-      mode:
-        description: build verifies and uploads the site artifact only; deploy publishes it
-        required: true
-        default: build
-        type: choice
-        options: [build, deploy]
-      authorization:
-        description: 'For deploy, type exactly: I authorize deploying the ModsPack website from <candidate_sha>'
-        required: false
         type: string
 
 permissions:
@@ -58,39 +44,4 @@ jobs:
       - run: npx playwright install --with-deps chromium
       # Builds with relative links, so the site works at https://<owner>.github.io/<repo>/.
       - run: npm run site:check
-      - uses: actions/upload-pages-artifact@v3
-        with:
-          path: site/dist
 
-  deploy:
-    needs: build
-    if: inputs.mode == 'deploy'
-    runs-on: ubuntu-24.04
-    permissions:
-      contents: read
-      pages: write
-      id-token: write
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    steps:
-      - name: Owner authorization
-        env:
-          ACTOR: ${{ github.actor }}
-          OWNER: ${{ github.repository_owner }}
-          GIVEN: ${{ inputs.authorization }}
-          WANT: I authorize deploying the ModsPack website from ${{ inputs.candidate_sha }}
-        run: |
-          test "$ACTOR" = "$OWNER" || { echo "::error::only the repository owner may deploy"; exit 1; }
-          test "$GIVEN" = "$WANT" || { echo "::error::authorization phrase does not match exactly"; exit 1; }
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          ref: ${{ inputs.candidate_sha }}
-      - name: Manual accessibility acceptance is recorded at the candidate
-        run: |
-          f=release/2.0.0/manual-acceptance.md
-          test -f "$f" || { echo "::error::$f missing"; exit 1; }
-          if grep -nE '\|\s*(PENDING|FAIL)\s*\|' "$f"; then echo "::error::manual acceptance has PENDING or FAIL rows"; exit 1; fi
-          grep -Eq '^Owner sign-off: [^<_].+ on [0-9]{4}-[0-9]{2}-[0-9]{2}' "$f" || { echo "::error::no owner sign-off line in $f"; exit 1; }
-      - id: deployment
-        uses: actions/deploy-pages@v4
