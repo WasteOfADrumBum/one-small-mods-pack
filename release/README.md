@@ -16,7 +16,7 @@ deploying the website are owner actions; the workflows below only make them safe
 | Tarball holds exactly the expected files | `release.yml` compares with `release/package-files.txt`; `test/package.test.mjs` keeps that list current |
 | The packed artifact installs and works | `scripts/consumer-smoke.mjs` on the exact tarball |
 | Manual acceptance recorded by a person | `release/2.0.0/manual-acceptance.md`: no `PENDING`/`FAIL` row, and an `Owner sign-off:` line |
-| Owner authorization | actor must be the repository owner, plus an exact phrase, plus the `npm-publish` / `github-pages` environment reviewer |
+| Owner authorization | actor must be the repository owner, plus an exact phrase, plus the `npm-publish` environment reviewer |
 
 Any gate that cannot be evaluated fails the run. The default modes (`dry-run`, `build`) upload nothing.
 
@@ -40,9 +40,8 @@ Any gate that cannot be evaluated fails the run. The default modes (`dry-run`, `
    Then delete the `NPM_TOKEN` secret and revoke the token. npm expires a new trusted-publisher
    configuration that has no successful publish within 2 days, so add it when you are ready to
    release the next version, or re-add it then.
-5. **Website**: Settings > Pages > Source: GitHub Actions. Add yourself as required reviewer on the
-   `github-pages` environment. The site uses relative links, so it works at
-   `https://wasteofadrumbum.github.io/one-small-mods-pack/`.
+5. **Website**: hosted on Vercel (project `one-small-mods-pack`, settings in `vercel.json`).
+   Vercel builds `npm run site` and serves `site/dist` on every merge to `main`.
 
 ## Release steps
 
@@ -65,10 +64,9 @@ Any gate that cannot be evaluated fails the run. The default modes (`dry-run`, `
 6. GitHub release (owner): `gh release create v2.0.0 --verify-tag --title "One Small ModsPack 2.0.0"
    --notes-file release/2.0.0/release-notes.md`, and attach the tarball and `SHA256SUMS` from the
    run's artifact.
-7. Website: Actions > Website (GitHub Pages), mode `deploy`, authorization
-   `I authorize deploying the ModsPack website from <sha>`, approve `github-pages`.
+7. Website: nothing to run. Vercel deploys `main` after each merge; check the production URL.
 8. Check: `npm view one-small-modspack@2.0.0 dist.integrity`, `npx one-small-modspack@2.0.0 --version`
-   in an empty folder, the provenance badge on npmjs.com, and the Pages URL.
+   in an empty folder, the provenance badge on npmjs.com, and the Vercel production URL.
 
 ## Rollback
 

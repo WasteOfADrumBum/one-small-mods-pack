@@ -43,5 +43,5 @@ Priority: **P1** worth doing next, **P2** useful, **P3** nice to have.
 
 ### R5. Optional hosting of the documentation site (P3)
 
-- **Why:** `pages.yml` can deploy to GitHub Pages once the manual accessibility rows are signed off.
-- **Done when:** the owner runs the deploy (release step 7) or decides not to host it.
+- **Why:** the owner chose Vercel on 2026-11-11; `vercel.json` builds the site and Vercel deploys `main`.
+- **Done when:** the Vercel production deployment serves the site.
