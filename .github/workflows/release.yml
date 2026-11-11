@@ -224,11 +224,16 @@ jobs:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: npm publish "./artifact/${{ needs.verify.outputs.tarball }}" --provenance --access public
 
+      # npm publish has already succeeded here. A first publish took about three minutes to show
+      # (2.0.0 on 2026-11-11), and a staged upload only shows once a maintainer approves it with
+      # 2FA, so this waits up to five minutes and then warns instead of failing.
       - name: Confirm the registry serves it
         run: |
-          for i in 1 2 3 4 5 6; do
+          for i in $(seq 1 30); do
             v=$(npm view "one-small-modspack@${{ inputs.version }}" version 2>/dev/null || true)
             [ "$v" = "${{ inputs.version }}" ] && { echo "published $v"; exit 0; }
             sleep 10
           done
-          echo "::error::registry does not show the version yet"; exit 1
+          msg="npm accepted the upload but does not serve ${{ inputs.version }} after 5 minutes. It may still be propagating; if npm staged it, approve it at npmjs.com > Packages > Staged Packages (2FA), then check: npm view one-small-modspack@${{ inputs.version }} version"
+          echo "::warning::$msg"
+          echo "- $msg" >> "$GITHUB_STEP_SUMMARY"
