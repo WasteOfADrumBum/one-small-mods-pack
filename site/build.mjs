@@ -148,7 +148,7 @@ pages['index.html'] = page('index.html', 'One Small ModsPack', `
 <pre tabindex="0"><code>npx one-small-modspack inspect
 npx one-small-modspack init
 npx one-small-modspack release-check</code></pre>
-<p>The package is not yet published to npm; see Getting started for running it from a clone.</p>
+<p>Published on npm as <a href="https://www.npmjs.com/package/one-small-modspack"><code>one-small-modspack</code></a> with provenance. Requires Node.js 20 or later.</p>
 `)
 
 // Identity (display name and role) comes from mods/modspack-agents/identities.json; everything else is read from the agent definition itself.
