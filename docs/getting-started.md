@@ -38,7 +38,7 @@ npx one-small-modspack init --platform copilot,gemini --yes
 npx one-small-modspack init --platform claude-code --yes
 ```
 
-If the package is not on npm yet, run it from a clone: `npm ci && npm run build && node dist/modspack.mjs init`.
+To try an unreleased change, run it from a clone: `npm ci && npm run build && node dist/modspack.mjs init`.
 
 For a pre-release integration test, run `npm pack` in the clone, then install the
 resulting `.tgz` in a disposable project with `npm install --save-dev <path-to-tgz>`.
