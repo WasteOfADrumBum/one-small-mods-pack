@@ -51,4 +51,4 @@ Replace the placeholder line with your own, for example
 `Owner sign-off: Joshua Small on 2026-11-02`. The workflows look for a line that starts with
 `Owner sign-off:` followed by a name and an ISO date.
 
-Owner sign-off: <not signed>
+Owner sign-off: Joshua Small on 2026-11-11
