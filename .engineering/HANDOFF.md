@@ -1,28 +1,26 @@
-<!-- generated from .engineering/state.json (revision 2) -->
+<!-- generated from .engineering/state.json (revision 3) -->
 
 # Handoff: one-small-mods-pack
 
 Read this, then **verify against GitHub** (branch head, open PRs, CI) before continuing. Nothing below is independently verified.
 
-- Checkpoint: revision 2, `rel-2-0-closeout-26b5ccd`, 2026-11-04T16:24:23Z by claude-code
+- Checkpoint: revision 3, `npm-release-failure-nov11`, 2026-11-17T02:24:38Z by cursor (grok-4.7)
 - Written by: a local edit that the agent then pushed; confirm the branch head matches
 - Uncommitted work outside this checkpoint: **none**
 
 ## Continue with
 
-Read release/2.0.0/tracker.md and release/2.0.0/verification-2026-11-04.md. No agent work remains before the owner acts; after the owner signs manual-acceptance.md, an agent can run the Release (npm) dry run on the sign-off commit and report.
+Read release/README.md section "2.0.0 publish outcome (2026-11-11)". The workflow file on main already contains the confirm-step fix. Do not publish, tag, or re-dispatch publish for 2.0.0. GitHub main was 065732f when this was written; the previous checkpoint recorded 26b5ccd. Trust GitHub if they differ.
 
 ## Unfinished
 
-- Manual acceptance (release/2.0.0/manual-acceptance.md, 15 rows PENDING, owner sign-off missing)
-- npm account access check, npm-publish environment, first-publication token (owner)
-- Release dry run on the sign-off commit, v2.0.0 tag, npm publish, GitHub release, Pages deploy (owner)
+- Owner: trusted publisher for release.yml and environment npm-publish, then remove the one-day NPM_TOKEN, before the next version. This session cannot read secrets, so that setup is unverified.
+- Manual acceptance rows remain DEFERRED-BY-OWNER. Do not call the package accessibility-verified.
+- Codex interactive trust, Copilot and Gemini signed-in runtime remain unverified.
 
 ## Blockers
 
-- Manual accessibility acceptance (blocks the publish gate and website deploy)
-- Owner decision on rows P1-P3 (test or DEFERRED-BY-OWNER)
-- Owner npm account access and environment setup; owner authorization
+- Next npm publish needs an owner-side trusted publisher or a fresh publish token. An interactive npm one-time password cannot be completed in Actions (EOTP on attempt 2).
 
 ## Decisions
 
@@ -30,6 +28,7 @@ Read release/2.0.0/tracker.md and release/2.0.0/verification-2026-11-04.md. No a
 - [agent] Node 20 support claim kept for the CLI runtime (smoke and 82 non-site tests pass); dev-only site tests need Node >=22.22.2 (jsdom 30) and are excluded on Node 20 in CI.
 - [human] Owner postponed manual accessibility testing on 2026-10-29; nothing marked passed. (docs/release-verification.md, section "Scope decision (2026-10-29, owner)")
 - [agent] Release-closure records go in non-shipped files (release/, ROADMAP.md, .engineering/) so the 2.0.0 tarball stays identical to the verified b0ff54a artifact; catalog update for Claude Code agent evidence is roadmap R3.
+- [agent] The 2026-11-11 Release (npm) run failed after a successful upload because confirm waited about 60 seconds. Commit 6926801 on main already waits five minutes and warns. This change does not edit the workflow.
 
 ## Constraints
 

@@ -1,33 +1,31 @@
 {
   "stateVersion": 1,
-  "revision": 2,
-  "checkpointId": "rel-2-0-closeout-26b5ccd",
+  "revision": 3,
+  "checkpointId": "npm-release-failure-nov11",
   "projectId": "one-small-mods-pack",
   "repository": "https://github.com/WasteOfADrumBum/one-small-mods-pack",
   "hub": "https://github.com/WasteOfADrumBum/one-small-engineering",
   "recorded": {
     "branch": "main",
-    "commit": "26b5ccdef6602a11b0970cee66b2b865c9f59b17",
-    "recordedAt": "2026-11-04T16:24:23Z"
+    "commit": "065732f3d9b1810483224a4dbe09749e1f8ea1df",
+    "recordedAt": "2026-11-17T02:24:38Z"
   },
   "development": {
-    "milestone": "ModsPack 2.0.0 release",
+    "milestone": "ModsPack after the 2.0.0 npm publish",
     "activeTask": {
-      "id": "rel-2-0-closeout",
-      "title": "2.0.0 release closure records (PR #8); waiting on owner gates"
+      "id": "npm-release-failure-nov11",
+      "title": "Explain the 2026-11-11 Release (npm) failure"
     },
-    "workingBranch": "release/2.0.0-closeout",
-    "activePr": 8,
+    "workingBranch": "cursor/npm-release-failure-fd13",
+    "activePr": null,
     "lastCompleted": [
-      "2026-11-04 on main 26b5ccd: tarball byte-identical to b0ff54a (sha256 8fb17e48...a8fab7, 82 files); npm run check 91 CLI + 133 mod tests; site:check 18 pages; audits 0; smoke 40/40.",
-      "Mod typecheck against Claude Code 2.1.318 declarations: 0 errors across all five guard mods incl. privacy-guard (modspack-agents has no TypeScript).",
-      "modspack-agents loaded live in Claude Code 2.1.318 (6 agents, 12 skills) and release-manager delegated to.",
-      "Runbook: first-publication token settings corrected (All packages, bypass 2FA); npm trust github route added. Manual a11y quick start (PowerShell) added. ROADMAP.md added."
+      "Investigated the 2026-11-11 Release (npm) run. Attempt 3 uploaded one-small-modspack@2.0.0 with provenance; the confirm step then failed after about 60 seconds. The registry shows 2.0.0 at 2026-11-11T10:35:01Z. main already waits five minutes and warns (6926801). This change does not edit the workflow.",
+      "Attempts 1 and 2 of that run failed on npm auth: empty NODE_AUTH_TOKEN (ENEEDAUTH), then a token that required an interactive one-time password (EOTP).",
+      "Public registry: latest is 2.0.0, with provenance for release.yml at 03ab44a. A 0.0.0-stage placeholder is also listed.",
+      "GitHub main at this checkpoint is 065732f, ahead of the previous record 26b5ccd. No open pull requests. CI and Checkpoint contract succeeded on 065732f."
     ],
-    "inProgress": [
-      "PR #8 (release records only, no shipped file change): CI and owner review"
-    ],
-    "nextAction": "Owner: review/merge PR #8; complete release/2.0.0/manual-acceptance.md using manual-a11y-quickstart.md (or mark rows DEFERRED-BY-OWNER) and sign off; do the one-time npm/environment setup in release/README.md; then dry run, tag, publish and release from the sign-off commit."
+    "inProgress": [],
+    "nextAction": "Owner, before the next version: add an npm trusted publisher for release.yml and the npm-publish environment (allow npm publish), then delete that environment NPM_TOKEN and revoke the token. Do not dispatch publish for 2.0.0; it is already on the registry. The red run is the old 60-second confirm step; main already warns after five minutes (6926801)."
   },
   "decisions": {
     "made": [
@@ -58,6 +56,13 @@
         "decidedBy": "agent",
         "humanRef": null,
         "recordedAt": "2026-11-04T16:24:23Z"
+      },
+      {
+        "id": "npm-confirm-already-fixed",
+        "summary": "The 2026-11-11 Release (npm) run failed after a successful upload because confirm waited about 60 seconds. Commit 6926801 on main already waits five minutes and warns. This change does not edit the workflow.",
+        "decidedBy": "agent",
+        "humanRef": null,
+        "recordedAt": "2026-11-17T02:24:38Z"
       }
     ],
     "constraints": [
@@ -73,80 +78,17 @@
   "verification": {
     "testsRun": [
       {
-        "command": "npm ci && npm run check (91 CLI + 133 mod tests, plugin validate)",
+        "command": "Read Release (npm) job logs for the 2026-11-11 publish run (attempts 1-3) and the public npm registry metadata",
         "result": "pass",
-        "commit": "26b5ccdef6602a11b0970cee66b2b865c9f59b17",
-        "at": "2026-11-04T16:24:23Z",
-        "ciRunUrl": null
+        "commit": "03ab44a4f4be78e8298371eaabdb4d35cf1874a0",
+        "at": "2026-11-17T02:24:38Z",
+        "ciRunUrl": "https://github.com/WasteOfADrumBum/one-small-mods-pack/actions/runs/42989562213"
       },
       {
-        "command": "npm run typecheck (all five guard mods) against Claude Code 2.1.318 declarations",
+        "command": "validate .engineering/state.json with the hub checkpoint schema",
         "result": "pass",
-        "commit": "26b5ccdef6602a11b0970cee66b2b865c9f59b17",
-        "at": "2026-11-04T16:24:23Z",
-        "ciRunUrl": null
-      },
-      {
-        "command": "claude -p --plugin-dir mods/modspack-agents (Claude Code 2.1.318): 6 agents and 12 skills listed; delegation to release-manager",
-        "result": "pass",
-        "commit": "26b5ccdef6602a11b0970cee66b2b865c9f59b17",
-        "at": "2026-11-04T16:24:23Z",
-        "ciRunUrl": null
-      },
-      {
-        "command": "npm run site:check (18 pages, Playwright Chromium)",
-        "result": "pass",
-        "commit": "26b5ccdef6602a11b0970cee66b2b865c9f59b17",
-        "at": "2026-11-04T16:24:23Z",
-        "ciRunUrl": null
-      },
-      {
-        "command": "npm audit --omit=dev --audit-level=low; npm audit --audit-level=high (0 vulnerabilities)",
-        "result": "pass",
-        "commit": "26b5ccdef6602a11b0970cee66b2b865c9f59b17",
-        "at": "2026-11-04T16:24:23Z",
-        "ciRunUrl": null
-      },
-      {
-        "command": "npm pack (82 files = release/package-files.txt, sha256 identical to b0ff54a) and consumer-smoke 40/40",
-        "result": "pass",
-        "commit": "26b5ccdef6602a11b0970cee66b2b865c9f59b17",
-        "at": "2026-11-04T16:24:23Z",
-        "ciRunUrl": null
-      },
-      {
-        "command": "CI: cli, mods, windows, site, node-compat x3 on main",
-        "result": "pass",
-        "commit": "26b5ccdef6602a11b0970cee66b2b865c9f59b17",
-        "at": "2026-10-31T19:49:14Z",
-        "ciRunUrl": "https://github.com/WasteOfADrumBum/one-small-mods-pack/actions/runs/41235986293"
-      },
-      {
-        "command": "Release (npm) workflow, mode dry-run, candidate b0ff54a, workflow ref 2681b06",
-        "result": "pass",
-        "commit": "b0ff54a436c90dc02b59cde3a1fca5e94334bc4f",
-        "at": "2026-10-31T19:46:04Z",
-        "ciRunUrl": "https://github.com/WasteOfADrumBum/one-small-mods-pack/actions/runs/41235745436"
-      },
-      {
-        "command": "Copilot CLI 1.0.105 copilot -p: not run, the session GitHub token was refused (no Copilot access)",
-        "result": "not_run",
-        "commit": "26b5ccdef6602a11b0970cee66b2b865c9f59b17",
-        "at": "2026-11-04T16:24:23Z",
-        "ciRunUrl": null
-      },
-      {
-        "command": "screen reader, real zoom, text spacing, Windows contrast themes, manual keyboard",
-        "result": "not_run",
-        "commit": null,
-        "at": "2026-11-04T16:24:23Z",
-        "ciRunUrl": null
-      },
-      {
-        "command": "Codex interactive /hooks trust; Copilot and Gemini signed-in runtime (no credentials in the agent container)",
-        "result": "not_run",
-        "commit": null,
-        "at": "2026-11-04T16:24:23Z",
+        "commit": "065732f3d9b1810483224a4dbe09749e1f8ea1df",
+        "at": "2026-11-17T02:24:38Z",
         "ciRunUrl": null
       }
     ],
@@ -154,21 +96,19 @@
   },
   "handoff": {
     "lastAgent": {
-      "tool": "claude-code",
-      "model": null
+      "tool": "cursor",
+      "model": "grok-4.7"
     },
-    "checkpointedAt": "2026-11-04T16:24:23Z",
+    "checkpointedAt": "2026-11-17T02:24:38Z",
     "unfinished": [
-      "Manual acceptance (release/2.0.0/manual-acceptance.md, 15 rows PENDING, owner sign-off missing)",
-      "npm account access check, npm-publish environment, first-publication token (owner)",
-      "Release dry run on the sign-off commit, v2.0.0 tag, npm publish, GitHub release, Pages deploy (owner)"
+      "Owner: trusted publisher for release.yml and environment npm-publish, then remove the one-day NPM_TOKEN, before the next version. This session cannot read secrets, so that setup is unverified.",
+      "Manual acceptance rows remain DEFERRED-BY-OWNER. Do not call the package accessibility-verified.",
+      "Codex interactive trust, Copilot and Gemini signed-in runtime remain unverified."
     ],
     "blockers": [
-      "Manual accessibility acceptance (blocks the publish gate and website deploy)",
-      "Owner decision on rows P1-P3 (test or DEFERRED-BY-OWNER)",
-      "Owner npm account access and environment setup; owner authorization"
+      "Next npm publish needs an owner-side trusted publisher or a fresh publish token. An interactive npm one-time password cannot be completed in Actions (EOTP on attempt 2)."
     ],
-    "continuation": "Read release/2.0.0/tracker.md and release/2.0.0/verification-2026-11-04.md. No agent work remains before the owner acts; after the owner signs manual-acceptance.md, an agent can run the Release (npm) dry run on the sign-off commit and report.",
+    "continuation": "Read release/README.md section \"2.0.0 publish outcome (2026-11-11)\". The workflow file on main already contains the confirm-step fix. Do not publish, tag, or re-dispatch publish for 2.0.0. GitHub main was 065732f when this was written; the previous checkpoint recorded 26b5ccd. Trust GitHub if they differ.",
     "uncommittedWorkOutsideCheckpoint": "none",
     "persistedBy": "local-file"
   },
