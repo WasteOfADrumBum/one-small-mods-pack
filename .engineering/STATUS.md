@@ -1,43 +1,34 @@
-<!-- generated from .engineering/state.json (revision 2); edit state.json through a checkpoint, not this file -->
+<!-- generated from .engineering/state.json (revision 3); edit state.json through a checkpoint, not this file -->
 
 # one-small-mods-pack: development status
 
 All values are **agent-reported**, not independently verified. Check GitHub before relying on them.
 
-- Milestone: ModsPack 2.0.0 release
-- Active task: rel-2-0-closeout: 2.0.0 release closure records (PR #8); waiting on owner gates
-- Branch: `release/2.0.0-closeout` · PR #8
-- Recorded commit: `26b5ccd` on `main`
-- Last checkpoint: 2026-11-04T16:24:23Z by claude-code
+- Milestone: ModsPack after the 2.0.0 npm publish
+- Active task: npm-release-failure-nov11: Explain the 2026-11-11 Release (npm) failure
+- Branch: `cursor/npm-release-failure-fd13`
+- Recorded commit: `065732f` on `main`
+- Last checkpoint: 2026-11-17T02:24:38Z by cursor
 
 ## Next action
 
-Owner: review/merge PR #8; complete release/2.0.0/manual-acceptance.md using manual-a11y-quickstart.md (or mark rows DEFERRED-BY-OWNER) and sign off; do the one-time npm/environment setup in release/README.md; then dry run, tag, publish and release from the sign-off commit.
+Owner, before the next version: add an npm trusted publisher for release.yml and the npm-publish environment (allow npm publish), then delete that environment NPM_TOKEN and revoke the token. Do not dispatch publish for 2.0.0; it is already on the registry. The red run is the old 60-second confirm step; main already warns after five minutes (6926801).
 
 ## Completed
 
-- 2026-11-04 on main 26b5ccd: tarball byte-identical to b0ff54a (sha256 8fb17e48...a8fab7, 82 files); npm run check 91 CLI + 133 mod tests; site:check 18 pages; audits 0; smoke 40/40.
-- Mod typecheck against Claude Code 2.1.318 declarations: 0 errors across all five guard mods incl. privacy-guard (modspack-agents has no TypeScript).
-- modspack-agents loaded live in Claude Code 2.1.318 (6 agents, 12 skills) and release-manager delegated to.
-- Runbook: first-publication token settings corrected (All packages, bypass 2FA); npm trust github route added. Manual a11y quick start (PowerShell) added. ROADMAP.md added.
+- Investigated the 2026-11-11 Release (npm) run. Attempt 3 uploaded one-small-modspack@2.0.0 with provenance; the confirm step then failed after about 60 seconds. The registry shows 2.0.0 at 2026-11-11T10:35:01Z. main already waits five minutes and warns (6926801). This change does not edit the workflow.
+- Attempts 1 and 2 of that run failed on npm auth: empty NODE_AUTH_TOKEN (ENEEDAUTH), then a token that required an interactive one-time password (EOTP).
+- Public registry: latest is 2.0.0, with provenance for release.yml at 03ab44a. A 0.0.0-stage placeholder is also listed.
+- GitHub main at this checkpoint is 065732f, ahead of the previous record 26b5ccd. No open pull requests. CI and Checkpoint contract succeeded on 065732f.
 
 ## In progress
 
-- PR #8 (release records only, no shipped file change): CI and owner review
+_none recorded_
 
 ## Tests (agent-reported)
 
-- `npm ci && npm run check (91 CLI + 133 mod tests, plugin validate)`: pass at `26b5ccd`, 2026-11-04T16:24:23Z
-- `npm run typecheck (all five guard mods) against Claude Code 2.1.318 declarations`: pass at `26b5ccd`, 2026-11-04T16:24:23Z
-- `claude -p --plugin-dir mods/modspack-agents (Claude Code 2.1.318): 6 agents and 12 skills listed; delegation to release…`: pass at `26b5ccd`, 2026-11-04T16:24:23Z
-- `npm run site:check (18 pages, Playwright Chromium)`: pass at `26b5ccd`, 2026-11-04T16:24:23Z
-- `npm audit --omit=dev --audit-level=low; npm audit --audit-level=high (0 vulnerabilities)`: pass at `26b5ccd`, 2026-11-04T16:24:23Z
-- `npm pack (82 files = release/package-files.txt, sha256 identical to b0ff54a) and consumer-smoke 40/40`: pass at `26b5ccd`, 2026-11-04T16:24:23Z
-- `CI: cli, mods, windows, site, node-compat x3 on main`: pass at `26b5ccd`, 2026-10-31T19:49:14Z
-- `Release (npm) workflow, mode dry-run, candidate b0ff54a, workflow ref 2681b06`: pass at `b0ff54a`, 2026-10-31T19:46:04Z
-- `Copilot CLI 1.0.105 copilot -p: not run, the session GitHub token was refused (no Copilot access)`: not_run at `26b5ccd`, 2026-11-04T16:24:23Z
-- `screen reader, real zoom, text spacing, Windows contrast themes, manual keyboard`: not_run, 2026-11-04T16:24:23Z
-- `Codex interactive /hooks trust; Copilot and Gemini signed-in runtime (no credentials in the agent container)`: not_run, 2026-11-04T16:24:23Z
+- `Read Release (npm) job logs for the 2026-11-11 publish run (attempts 1-3) and the public npm registry metadata`: pass at `03ab44a`, 2026-11-17T02:24:38Z
+- `validate .engineering/state.json with the hub checkpoint schema`: pass at `065732f`, 2026-11-17T02:24:38Z
 
 ## Unverified changes
 

@@ -43,7 +43,43 @@ Any gate that cannot be evaluated fails the run. The default modes (`dry-run`, `
 5. **Website**: hosted on Vercel (project `one-small-mods-pack`, settings in `vercel.json`).
    Vercel builds `npm run site` and serves `site/dist` on every merge to `main`.
 
+## 2.0.0 publish outcome (2026-11-11)
+
+`one-small-modspack@2.0.0` is the `latest` version on npm. Provenance for that version cites
+Release (npm) run [42989562213](https://github.com/WasteOfADrumBum/one-small-mods-pack/actions/runs/42989562213)
+attempt 3, workflow `.github/workflows/release.yml` on `main`, commit `03ab44a`. That run is still
+red. The upload succeeded (`+ one-small-modspack@2.0.0`); the next step, "Confirm the registry
+serves it", then looped for about 60 seconds and exited 1. The registry recorded `2.0.0` at
+2026-11-11T10:35:01Z, about three minutes after the upload. `main` already contains the correction
+(commit `6926801`, pull request #11): wait five minutes, then warn instead of failing a publish
+npm has accepted. Do not dispatch `publish` for `2.0.0` again. The verify job refuses a version
+that is already on npm.
+
+The same run's earlier attempts failed on credentials, which only the owner can fix:
+
+1. Attempt 1: `NODE_AUTH_TOKEN` was empty and npm returned `ENEEDAUTH`.
+2. Attempt 2: a token was present, provenance was signed, then npm returned `EOTP` and a browser
+   one-time-password URL. Actions cannot complete that prompt. A granular token used from this
+   workflow has to be created with bypass two-factor authentication, or publishing has to use a
+   trusted publisher instead of a token.
+3. Attempt 3 used a token that npm accepted.
+
+Before the next version, add a trusted publisher on the package (GitHub Actions, user
+`WasteOfADrumBum`, repository `one-small-mods-pack`, workflow filename `release.yml`, environment
+`npm-publish`, allow `npm publish`). Then delete the `NPM_TOKEN` secret on the `npm-publish`
+environment and revoke the token. The first-publication token in the setup above was a one-day
+token. npm's current notice is that bypass-2FA granular tokens lose direct publish in the change
+targeted for January 2027; trusted publishing (or staged publishing plus a maintainer's 2FA
+approval) is the path after that. This session cannot see repository secrets, so it does not know
+whether that publisher or secret is already set.
+
+The registry also lists `0.0.0-stage`, described as a temporary placeholder for staged publishing.
+`latest` is `2.0.0`.
+
 ## Release steps
+
+These steps are how 2.0.0 was released. For a later version, use the same gates with that version
+and complete the trusted-publisher setup above first.
 
 1. Pick the candidate commit (see `release/2.0.0/tracker.md`) and check CI is green on it.
 2. Do the manual checks in `release/2.0.0/manual-acceptance.md`, fill in results and the sign-off
